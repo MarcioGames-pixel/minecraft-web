@@ -1373,7 +1373,7 @@ function Java_org_lwjgl_opengl_GL11_nglInterleavedArrays(lib, format, stride, me
 	if(hasT) { texCoordData.size = 2; texCoordData.type = FLOAT; texCoordData.stride = stride; texCoordData.pointer = p + tOff; }
 }
 
-export default {
+const __natives = {
 	Java_org_lwjgl_DefaultSysImplementation_getPointerSize,
 	Java_org_lwjgl_DefaultSysImplementation_getJNIVersion,
 	Java_org_lwjgl_DefaultSysImplementation_setDebug,
@@ -1519,4 +1519,49 @@ export default {
 	Java_org_lwjgl_opengl_GL11_nglVertex2f,
 	Java_org_lwjgl_opengl_GL11_nglDeleteTextures,
 	Java_org_lwjgl_opengl_GL11_nglInterleavedArrays,
+};
+
+// ===== Adaptacao LWJGL 2.4.2 (jar) <-> natives escritos para LWJGL 2.9 =====
+// 1) 2.4.2 chama GLContext.getFunctionAddress(String) (2.9 usava ngetFunctionAddress)
+__natives.Java_org_lwjgl_opengl_GLContext_getFunctionAddress = function(lib, name) { return 1; };
+
+// 2) Em 2.4.2 funcoes com buffer recebem (Buffer, int offsetBytes, long funcPtr);
+//    em 2.9 recebiam (long memPtr, long funcPtr). Convertemos buffer+offset -> endereco.
+const __bufArgs = {
+	Java_org_lwjgl_opengl_GL11_nglGetIntegerv: 1,
+	Java_org_lwjgl_opengl_GL11_nglGenTextures: 1,
+	Java_org_lwjgl_opengl_GL11_nglDeleteTextures: 1,
+	Java_org_lwjgl_opengl_GL11_nglTexImage2D: 8,
+	Java_org_lwjgl_opengl_GL11_nglTexSubImage2D: 8,
+	Java_org_lwjgl_opengl_GL11_nglTexCoordPointer: 3,
+	Java_org_lwjgl_opengl_GL11_nglColorPointer: 3,
+	Java_org_lwjgl_opengl_GL11_nglVertexPointer: 3,
+	Java_org_lwjgl_opengl_GL11_nglNormalPointer: 2,
+	Java_org_lwjgl_opengl_GL11_nglMultMatrixf: 0,
+	Java_org_lwjgl_opengl_GL11_nglCallLists: 2,
+	Java_org_lwjgl_opengl_GL11_nglGetFloatv: 1,
+	Java_org_lwjgl_opengl_GL11_nglInterleavedArrays: 2,
+};
+for (const [name, idx] of Object.entries(__bufArgs))
+{
+	const orig = __natives[name];
+	if (!orig) { console.warn("natives: faltando", name); continue; }
+	__natives[name] = async function(lib, ...args)
+	{
+		const b = args[idx], off = Number(args[idx + 1]) || 0;
+		const base = b ? Number(await b.address()) : 0;
+		args.splice(idx, 2, base + off);
+		return orig.call(this, lib, ...args);
+	};
 }
+
+// 3) Funcoes que 2.4.2 exige e 2.9 nao tinha (no-ops)
+for (const n of [
+	"Java_org_lwjgl_opengl_GLContext_nUnloadOpenGLLibrary",
+	"Java_org_lwjgl_opengl_GLContext_resetNativeStubs",
+	"Java_org_lwjgl_opengl_LinuxContextImplementation_nDestroy",
+	"Java_org_lwjgl_opengl_LinuxContextImplementation_nReleaseCurrentContext",
+])
+	if (!__natives[n]) __natives[n] = function() {};
+
+export default __natives;
