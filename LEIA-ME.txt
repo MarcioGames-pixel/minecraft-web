@@ -1,0 +1,17 @@
+COMO RODAR
+1) NAO abra o index.html com duplo clique (file://). Sirva por HTTP com suporte a Range:
+     npx http-server -p 8080        (na pasta deste jogo)   ->  http://localhost:8080
+   (python -m http.server NAO funciona: nao suporta Range.)  Ou suba tudo num host (GitHub Pages, Netlify, Apache).
+2) Use Chrome/Edge desktop. Aperte F12 > Console/Network para ver erros (404 = arquivo faltando).
+3) Clique "Iniciar Minecraft", depois clique dentro do jogo (captura o mouse).
+Mudancas: loader CheerpJ 5.0 (o 3.0 nao roda applet/LWJGL), lwjgl_util.jar recriado (GLU minimo), jinput/lzma no archive.
+
+SURVIVAL: o minecraft.jar enviado antes ainda iniciava em CRIATIVO (l.class criava d/a = CreativeMode).
+Agora l.class cria d/c (SurvivalMode: vida, mobs, flechas, pontuacao). Como d/c nao tinha construtor no jar,
+foi adicionado um (d/c(l) -> super(l)). Assinaturas META-INF/*.SF/*.RSA removidas (jar alterado).
+
+LWJGL (erro "no lwjgl in java.library.path"): o CheerpJ nao traz o LWJGL pronto. Foi adicionada a pasta
+cheerpj-natives/ (repositorio oficial leaningtech/cheerpj-natives, Apache-2.0) = LWJGL implementado em JavaScript/WebGL2,
+com 3 funcoes extras para este jogo (glVertex2f, glDeleteTextures, glInterleavedArrays). A pasta precisa ficar
+na raiz do site, ao lado do index.html (o java.library.path aponta para /app/cheerpj-natives/natives).
+Essa implementacao e PARCIAL: pode faltar nevoa/iluminacao/alguns efeitos visuais.

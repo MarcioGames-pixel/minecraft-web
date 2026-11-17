@@ -1,0 +1,10 @@
+<IfModule mod_headers.c>
+    Header unset Content-Security-Policy
+    Header unset Content-Security-Policy-Report-Only
+    Header set Content-Security-Policy "default-src * data: blob: 'unsafe-inline' 'unsafe-eval';"
+</IfModule>
+<IfModule mod_headers.c>
+    <FilesMatch "\.(js|html)$">
+        Header set Cache-Control "no-cache, must-revalidate"
+    </FilesMatch>
+</IfModule>
