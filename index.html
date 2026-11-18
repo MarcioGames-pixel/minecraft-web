@@ -136,8 +136,18 @@
             }
         }
 
-        function iniciarMinecraft() {
+        async function iniciarMinecraft() {
             try {
+                // Tela cheia + paisagem (precisa ser dentro do toque do usuario)
+                try {
+                    if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+                    if (screen.orientation && screen.orientation.lock) await screen.orientation.lock("landscape");
+                } catch (e) { /* alguns navegadores nao permitem; seguimos */ }
+                await new Promise(r => setTimeout(r, 400));
+                if (window.innerHeight > window.innerWidth) {
+                    setStatus("Gire o celular para PAISAGEM e toque em Iniciar de novo", 100);
+                    return;
+                }
                 startButton.disabled = true;
                 setStatus("Construindo janela grafica...", 100);
                 gameZone.innerHTML = "";
@@ -165,6 +175,24 @@
                 gameZone.appendChild(applet);
 
                 configurarMapeamentoBotoes();
+                // Arrastar o dedo no canvas = mover a camera
+                let lastTouch = null;
+                glc.addEventListener("touchstart", (e) => {
+                    e.preventDefault();
+                    const t = e.changedTouches[0];
+                    lastTouch = { id: t.identifier, x: t.clientX, y: t.clientY };
+                }, { passive: false });
+                glc.addEventListener("touchmove", (e) => {
+                    e.preventDefault();
+                    if (!lastTouch) return;
+                    for (const t of e.changedTouches) {
+                        if (t.identifier !== lastTouch.id) continue;
+                        const k = 1.5;
+                        if (window.lwjglLook) window.lwjglLook((t.clientX - lastTouch.x) * k, (t.clientY - lastTouch.y) * k);
+                        lastTouch.x = t.clientX; lastTouch.y = t.clientY;
+                    }
+                }, { passive: false });
+                glc.addEventListener("touchend", () => { lastTouch = null; });
                 setTimeout(() => glc.focus(), 500);
                 glc.addEventListener("click", () => glc.focus());
             } catch (error) {
