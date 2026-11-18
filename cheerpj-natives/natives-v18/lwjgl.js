@@ -4,6 +4,8 @@ await import("https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/3.4.2/gl-matrix-m
 const glCanvas = window.lwjglCanvasElement;
 if (!(glCanvas instanceof HTMLCanvasElement)) throw new Error("window.lwjglCanvasElement is not set or is not a canvas");
 const glCtx = glCanvas.getContext("webgl2", {antialias: false, alpha: false});
+// Resolucao logica do jogo = tamanho do canvas (definido pelo index.html antes de iniciar)
+const FBW = glCanvas.width, FBH = glCanvas.height;
 
 var vertexShaderSrc = `
 	attribute vec4 aVertexPosition;
@@ -221,7 +223,7 @@ var textureObjects = [null];
 // We need to use an FBO as the main target to support copyTexSubImage2D that seems broken otherwise
 var fbTexture = glCtx.createTexture();
 glCtx.bindTexture(glCtx.TEXTURE_2D, fbTexture);
-glCtx.texImage2D(glCtx.TEXTURE_2D, 0, glCtx.RGBA, 1000, 500, 0, glCtx.RGBA, glCtx.UNSIGNED_BYTE, null);
+glCtx.texImage2D(glCtx.TEXTURE_2D, 0, glCtx.RGBA, FBW, FBH, 0, glCtx.RGBA, glCtx.UNSIGNED_BYTE, null);
 glCtx.bindTexture(glCtx.TEXTURE_2D, null);
 var mainFb = glCtx.createFramebuffer();
 glCtx.bindFramebuffer(glCtx.READ_FRAMEBUFFER, mainFb);
@@ -230,7 +232,7 @@ glCtx.framebufferTexture2D(glCtx.FRAMEBUFFER, glCtx.COLOR_ATTACHMENT0, glCtx.TEX
 // Add a depth render buffer
 var depthRb = glCtx.createRenderbuffer();
 glCtx.bindRenderbuffer(glCtx.RENDERBUFFER, depthRb);
-glCtx.renderbufferStorage(glCtx.RENDERBUFFER, glCtx.DEPTH_COMPONENT16, 1000, 500);
+glCtx.renderbufferStorage(glCtx.RENDERBUFFER, glCtx.DEPTH_COMPONENT16, FBW, FBH);
 glCtx.framebufferRenderbuffer(glCtx.FRAMEBUFFER, glCtx.DEPTH_ATTACHMENT, glCtx.RENDERBUFFER, depthRb);
 // Synthetize a focus event, it's needed for LWJGL logic
 var eventQueue = [{type:"focus"}];
@@ -238,13 +240,21 @@ var eventQueue = [{type:"focus"}];
 function convertMousePos(x, y) {
 	// We have a framebuffer of 1000x500, but Minecraft renders into the bottom left corner of it.
 	const offsetX = 0;
-	const offsetY = glCanvas.height - 500;
+	const offsetY = 0;
 
 	const xRatio = glCanvas.width / glCanvas.clientWidth;
 	const yRatio = glCanvas.height / glCanvas.clientHeight;
 
 	return [x * xRatio - offsetX, y * yRatio - offsetY];
 }
+
+/** Olhar por toque: o index.html chama window.lwjglLook(dx, dy) ao arrastar o dedo */
+window.lwjglLook = function(dx, dy) {
+	if (!lockedMousePos) return;
+	const x = lockedMousePos.x += dx, y = lockedMousePos.y += dy;
+	if (eventQueue[0]?.type == "mousemove") { eventQueue[0].x = x; eventQueue[0].y = y; }
+	else eventQueue.push({ type: "mousemove", x, y });
+};
 
 /** Convert from MouseEvent.button to X11 mouse button */
 function convertMouseButton(button) {
@@ -369,7 +379,7 @@ function Java_org_lwjgl_opengl_LinuxDisplay_nGetDefaultScreen()
 async function Java_org_lwjgl_opengl_LinuxDisplay_nGetAvailableDisplayModes(lib)
 {
 	var DisplayMode = await lib.org.lwjgl.opengl.DisplayMode;
-	var d = await new DisplayMode(1000, 500);
+	var d = await new DisplayMode(FBW, FBH);
 	return [d];
 }
 
@@ -445,7 +455,7 @@ function Java_org_lwjgl_opengl_LinuxMouse_nQueryPointer()
 
 function Java_org_lwjgl_opengl_LinuxMouse_nGetWindowHeight()
 {
-	return 500;
+	return FBH;
 }
 
 function Java_org_lwjgl_opengl_LinuxKeyboard_getModifierMapping()
@@ -507,8 +517,8 @@ function Java_org_lwjgl_opengl_GL11_nglGetIntegerv(lib, id, memPtr, funcPtr)
 	{
 		buf[0] = 0;
 		buf[1] = 0;
-		buf[2] = 1000;
-		buf[3] = 500;
+		buf[2] = FBW;
+		buf[3] = FBH;
 	}
 	else if(verboseLog)
 	{
@@ -544,7 +554,7 @@ function Java_org_lwjgl_opengl_LinuxContextImplementation_nSwapBuffers()
 	if(verboseLog)
 		console.warn("SwapBuffer");
 	glCtx.bindFramebuffer(glCtx.DRAW_FRAMEBUFFER, null);
-	glCtx.blitFramebuffer(0, 0, 1000, 500, 0, 0, 1000, 500, glCtx.COLOR_BUFFER_BIT, glCtx.NEAREST);
+	glCtx.blitFramebuffer(0, 0, FBW, FBH, 0, 0, FBW, FBH, glCtx.COLOR_BUFFER_BIT, glCtx.NEAREST);
 	glCtx.bindFramebuffer(glCtx.DRAW_FRAMEBUFFER, mainFb);
 	frameCount++;
 	if(frameCount == frameLimit)
@@ -1264,7 +1274,7 @@ function Java_org_lwjgl_opengl_LinuxDisplay_nSetWindowIcon()
 
 function Java_org_lwjgl_opengl_LinuxMouse_nGetWindowWidth()
 {
-	return 1000;
+	return FBW;
 }
 
 function Java_org_lwjgl_opengl_LinuxMouse_nSendWarpEvent()
