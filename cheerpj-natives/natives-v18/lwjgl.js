@@ -2070,4 +2070,38 @@ for (const [short, r] of Object.entries(__stubTable))
 	};
 }
 
+// ===== Diagnostico: registra 1a chamada de cada native, excecoes e quadros por segundo =====
+{
+	const seen = new Set();
+	for (const name of Object.keys(__natives))
+	{
+		const orig = __natives[name];
+		if (typeof orig !== "function") continue;
+		__natives[name] = function(...a)
+		{
+			if (!seen.has(name)) { seen.add(name); console.log("[1a chamada]", name.replace("Java_org_lwjgl_", "")); }
+			try
+			{
+				const r = orig.apply(this, a);
+				if (r && typeof r.then === "function")
+					return r.catch(e => { console.error("[native erro]", name, e && e.stack ? e.stack : e); throw e; });
+				return r;
+			}
+			catch (e)
+			{
+				console.error("[native erro]", name, e && e.stack ? e.stack : e);
+				throw e;
+			}
+		};
+	}
+	let lastFrames = 0;
+	setInterval(() => {
+		let err = "?";
+		try { err = glCtx.getError(); } catch (e) {}
+		console.log("[diag] quadros=" + frameCount + " (+" + (frameCount - lastFrames) + ") glErro=" + err + " lost=" + glCtx.isContextLost() + " fb=" + FBW + "x" + FBH + " canvas=" + glCanvas.width + "x" + glCanvas.height);
+		lastFrames = frameCount;
+	}, 3000);
+	glCanvas.addEventListener("webglcontextlost", () => console.error("[diag] WEBGL CONTEXT PERDIDO"));
+}
+
 export default __natives;
