@@ -89,6 +89,68 @@
     </div>
 
     <script>
+    // ===== Console embutido (para depurar no celular) =====
+    (function () {
+        const MAX = 400, KEY = "mc_log_v1";
+        const lines = [];
+        let prev = "";
+        try { prev = localStorage.getItem(KEY) || ""; } catch (e) {}
+        const t0 = performance.now();
+        function stamp() { return ((performance.now() - t0) / 1000).toFixed(1) + "s "; }
+        function add(kind, args) {
+            let txt;
+            try { txt = Array.from(args).map(a => (a && a.stack) ? a.stack : (typeof a === "object" ? JSON.stringify(a) : String(a))).join(" "); }
+            catch (e) { txt = "[?]"; }
+            txt = txt.replace(/\s+$/, "");
+            if (!txt || /^\s*$/.test(txt)) return;
+            lines.push(stamp() + kind + " " + txt.slice(0, 600));
+            if (lines.length > MAX) lines.shift();
+            dirty = true;
+        }
+        let dirty = false;
+        for (const k of ["log", "info", "warn", "error"]) {
+            const orig = console[k].bind(console);
+            console[k] = function () { add(k === "log" || k === "info" ? "" : k.toUpperCase() + ":", arguments); orig.apply(null, arguments); };
+        }
+        window.addEventListener("error", e => add("ERRO JS:", [e.message + " @" + e.lineno]));
+        window.addEventListener("unhandledrejection", e => add("PROMISE:", [e.reason]));
+        document.addEventListener("visibilitychange", () => add("PAGE:", ["visibilidade = " + document.visibilityState]));
+        window.addEventListener("pagehide", () => { add("PAGE:", ["pagehide (pagina fechando)"]); save(); });
+        document.addEventListener("fullscreenchange", () => add("PAGE:", ["fullscreen = " + !!document.fullscreenElement]));
+        function save() { try { localStorage.setItem(KEY, lines.join("\n")); } catch (e) {} }
+        setInterval(() => { if (dirty) { dirty = false; save(); } }, 1000);
+
+        window.addEventListener("DOMContentLoaded", () => {
+            const btn = document.createElement("div");
+            btn.textContent = "LOG";
+            btn.style.cssText = "position:fixed;top:4px;left:50%;transform:translateX(-50%);z-index:100000;padding:6px 14px;background:#000a;color:#0f0;border:1px solid #0f0;border-radius:6px;font:bold 12px monospace;user-select:none;touch-action:manipulation";
+            const panel = document.createElement("div");
+            panel.style.cssText = "position:fixed;inset:0;z-index:100001;display:none;flex-direction:column;background:#000e;color:#ddd;font:11px monospace;touch-action:pan-y";
+            const bar = document.createElement("div");
+            bar.style.cssText = "display:flex;gap:8px;padding:8px;background:#111";
+            const mk = (t, f) => { const b = document.createElement("button"); b.textContent = t; b.style.cssText = "padding:8px 12px;font:bold 12px monospace"; b.onclick = f; bar.appendChild(b); return b; };
+            const pre = document.createElement("pre");
+            pre.style.cssText = "flex:1;margin:0;padding:8px;overflow:auto;white-space:pre-wrap;word-break:break-all;user-select:text;-webkit-user-select:text;touch-action:pan-y";
+            let showPrev = false;
+            function render() {
+                pre.textContent = showPrev ? (prev || "(sem log anterior)") : lines.join("\n");
+                pre.scrollTop = pre.scrollHeight;
+            }
+            mk("Fechar", () => { panel.style.display = "none"; });
+            mk("Copiar", async () => {
+                try { await navigator.clipboard.writeText(pre.textContent); add("PAGE:", ["log copiado"]); }
+                catch (e) { const r = document.createRange(); r.selectNodeContents(pre); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+            });
+            const bPrev = mk("Sessao anterior", () => { showPrev = !showPrev; bPrev.textContent = showPrev ? "Sessao atual" : "Sessao anterior"; render(); });
+            mk("Atualizar", render);
+            panel.appendChild(bar); panel.appendChild(pre);
+            btn.addEventListener("click", () => { showPrev = false; bPrev.textContent = "Sessao anterior"; render(); panel.style.display = "flex"; });
+            btn.addEventListener("touchstart", e => e.stopPropagation(), { passive: true });
+            document.body.appendChild(btn); document.body.appendChild(panel);
+        });
+    })();
+    </script>
+    <script>
         "use strict";
 
         const startup = document.getElementById("startup");
