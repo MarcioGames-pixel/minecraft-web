@@ -322,7 +322,7 @@
                 setStatus("Configurando ambiente mobile...", 50);
                 // /app/ = raiz do servidor; usamos a pasta desta pagina para achar cheerpj-natives mesmo em subpastas
                 const baseDir = location.pathname.replace(/[^\/]*$/, "");
-                const nativesPath = "/app" + baseDir + "cheerpj-natives/natives-v19";
+                const nativesPath = "/app" + baseDir + "cheerpj-natives/natives-v19d";
                 console.log("LWJGL natives em:", nativesPath + "/lwjgl.js");
                 await cheerpjInit({ javaProperties: ["java.library.path=" + nativesPath] }); // Java 8 (padrao) + LWJGL em JS
                 setStatus("Ambiente pronto!", 100);
@@ -335,7 +335,7 @@
 
         // Verifica se os natives estao acessiveis e se o navegador tem WebGL2, ANTES de iniciar o Java
         async function checarAmbiente() {
-            const base = location.pathname.replace(/[^\/]*$/, "") + "cheerpj-natives/natives-v19/";
+            const base = location.pathname.replace(/[^\/]*$/, "") + "cheerpj-natives/natives-v19d/";
             // WebGL2
             try {
                 const t = document.createElement("canvas");
@@ -352,7 +352,7 @@
                 catch (e) { throw new Error("Nao consegui baixar " + url + " (" + e.message + ")"); }
                 const txt = await r.text();
                 console.log("[checagem] " + f + " -> HTTP " + r.status + " tipo=" + r.headers.get("content-type") + " range=" + r.headers.get("content-range") + " inicio=" + JSON.stringify(txt.slice(0, 30)));
-                if (!r.ok) throw new Error(f + " nao encontrado (HTTP " + r.status + ") em " + url + ". Suba a pasta cheerpj-natives/natives-v19 inteira no repositorio.");
+                if (!r.ok) throw new Error(f + " nao encontrado (HTTP " + r.status + ") em " + url + ". Suba a pasta cheerpj-natives/natives-v19d inteira no repositorio.");
                 if (/^\s*</.test(txt)) throw new Error(f + " veio como pagina HTML (nao e JavaScript). O servidor esta bloqueando ou o arquivo nao existe: " + url);
                 if (f === "lwjgl.js" && r.status !== 206) throw new Error("O servidor nao suporta o cabecalho Range (HTTP " + r.status + "). O CheerpJ precisa disso. Use GitHub Pages, Netlify ou Cloudflare Pages.");
             }
@@ -402,22 +402,42 @@
                 configurarMapeamentoBotoes();
                 // Arrastar o dedo no canvas = mover a camera
                 let lastTouch = null;
+                let menuTouch = false;
+                const emMenu = () => !!(window.lwjglMenuMode && window.lwjglMenuMode());
                 glc.addEventListener("touchstart", (e) => {
                     e.preventDefault();
                     const t = e.changedTouches[0];
                     lastTouch = { id: t.identifier, x: t.clientX, y: t.clientY };
+                    // Menus / tela de morte: o toque vira clique do mouse
+                    if (emMenu() && window.lwjglPointer) {
+                        menuTouch = true;
+                        window.lwjglPointer("move", t.clientX, t.clientY);
+                        window.lwjglPointer("down", t.clientX, t.clientY);
+                    }
                 }, { passive: false });
                 glc.addEventListener("touchmove", (e) => {
                     e.preventDefault();
                     if (!lastTouch) return;
                     for (const t of e.changedTouches) {
                         if (t.identifier !== lastTouch.id) continue;
+                        if (menuTouch) { window.lwjglPointer("move", t.clientX, t.clientY); lastTouch.x = t.clientX; lastTouch.y = t.clientY; continue; }
                         const k = 1.5;
                         if (window.lwjglLook) window.lwjglLook((t.clientX - lastTouch.x) * k, (t.clientY - lastTouch.y) * k);
                         lastTouch.x = t.clientX; lastTouch.y = t.clientY;
                     }
                 }, { passive: false });
-                glc.addEventListener("touchend", () => { lastTouch = null; });
+                const fimToque = (e) => {
+                    if (menuTouch && window.lwjglPointer) {
+                        const t = (lastTouch && Array.from(e.changedTouches).find(c => c.identifier === lastTouch.id)) || e.changedTouches[0];
+                        const x = t ? t.clientX : lastTouch.x, y = t ? t.clientY : lastTouch.y;
+                        window.lwjglPointer("move", x, y);
+                        setTimeout(() => window.lwjglPointer("up", x, y), 60);
+                        menuTouch = false;
+                    }
+                    lastTouch = null;
+                };
+                glc.addEventListener("touchend", fimToque);
+                glc.addEventListener("touchcancel", fimToque);
                 setTimeout(() => glc.focus(), 500);
                 glc.addEventListener("click", () => glc.focus());
             } catch (error) {
