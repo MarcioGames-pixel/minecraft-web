@@ -188,7 +188,7 @@
                 setStatus("Configurando ambiente mobile...", 50);
                 // /app/ = raiz do servidor; usamos a pasta desta pagina para achar cheerpj-natives mesmo em subpastas
                 const baseDir = location.pathname.replace(/[^\/]*$/, "");
-                const nativesPath = "/app" + baseDir + "cheerpj-natives/natives-v18";
+                const nativesPath = "/app" + baseDir + "cheerpj-natives/natives-v18m";
                 console.log("LWJGL natives em:", nativesPath + "/lwjgl.js");
                 await cheerpjInit({ javaProperties: ["java.library.path=" + nativesPath] }); // Java 8 (padrao) + LWJGL em JS
                 setStatus("Ambiente pronto!", 100);
