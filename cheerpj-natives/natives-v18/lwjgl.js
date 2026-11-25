@@ -785,6 +785,7 @@ function Java_org_lwjgl_opengl_GL11_nglColor4f(lib, r, g, b, a, funcPtr)
 {
 	if(curList)
 		return pushInList(curList, arguments, Java_org_lwjgl_opengl_GL11_nglColor4f);
+	immCur.r = r; immCur.g = g; immCur.b = b; immCur.a = a;
 	glCtx.vertexAttrib4f(colorLocation, r, g, b, a);
 }
 
@@ -819,16 +820,28 @@ function Java_org_lwjgl_opengl_GL11_nglEndList(lib, funcPtr)
 	curList = null;
 }
 
-function Java_org_lwjgl_opengl_GL11_nglColor3f()
+function Java_org_lwjgl_opengl_GL11_nglColor3f(lib, r, g, b, funcPtr)
 {
 	if(curList)
 		return pushInList(curList, arguments, Java_org_lwjgl_opengl_GL11_nglColor3f);
-	if(verboseLog)
-		console.log("glColor3f");
+	immCur.r = r; immCur.g = g; immCur.b = b; immCur.a = 1;
+	glCtx.vertexAttrib4f(colorLocation, r, g, b, 1);
 }
 
 function Java_org_lwjgl_opengl_LinuxDisplay_nGetNativeCursorCapabilities()
 {
+	// CURSOR_ONE_BIT_TRANSPARENCY = 1: Mouse.setNativeCursor exige este bit
+	return 1;
+}
+
+function Java_org_lwjgl_opengl_LinuxDisplay_nGetMinCursorSize()
+{
+	return 1;
+}
+
+function Java_org_lwjgl_opengl_LinuxDisplay_nGetMaxCursorSize()
+{
+	return 64;
 }
 
 function Java_org_lwjgl_opengl_GL11_nglShadeModel()
@@ -1094,57 +1107,63 @@ function Java_org_lwjgl_opengl_GL11_nglPolygonOffset()
 		console.log("glPolygonOffset");
 }
 
+// ---- Modo imediato (glBegin/glEnd) com buffers crescentes e cor/texcoord por vertice ----
+var imm = { mode: 0, n: 0, cap: 0, pos: null, col: null, tex: null };
+var immCur = { r: 1, g: 1, b: 1, a: 1, s: 0, t: 0 };
+function immReserve(extra)
+{
+	if(imm.n + extra <= imm.cap) return;
+	var cap = Math.max(256, imm.cap * 2);
+	while(cap < imm.n + extra) cap *= 2;
+	var np = new Float32Array(cap * 3), nc = new Float32Array(cap * 4), nt = new Float32Array(cap * 2);
+	if(imm.n)
+	{
+		np.set(imm.pos.subarray(0, imm.n * 3));
+		nc.set(imm.col.subarray(0, imm.n * 4));
+		nt.set(imm.tex.subarray(0, imm.n * 2));
+	}
+	imm.pos = np; imm.col = nc; imm.tex = nt; imm.cap = cap;
+}
+
 function Java_org_lwjgl_opengl_GL11_nglBegin(lib, mode, funcPtr)
 {
 	if(curList)
 		return pushInList(curList, arguments, Java_org_lwjgl_opengl_GL11_nglBegin);
-	immediateModeData.mode = mode;
-	immediateModeData.vertexPos = 0;
-	immediateModeData.texCoordPos = 0;
+	imm.mode = mode;
+	imm.n = 0;
 }
 
 function Java_org_lwjgl_opengl_GL11_nglTexCoord2f(lib, x, y, funcPtr)
 {
 	if(curList)
 		return pushInList(curList, arguments, Java_org_lwjgl_opengl_GL11_nglTexCoord2f);
-	var curPos = immediateModeData.texCoordPos;
-	if(curPos > immediateModeData.texCoordBuf.length)
-	{
-		console.log("glTexCoord2f overflow");
-		return;
-	}
-	immediateModeData.texCoordBuf[curPos] = x;
-	immediateModeData.texCoordBuf[curPos + 1] = y;
-	immediateModeData.texCoordPos = curPos + 2;
+	immCur.s = x;
+	immCur.t = y;
 }
 
 function Java_org_lwjgl_opengl_GL11_nglVertex3f(lib, x, y, z, funcPtr)
 {
 	if(curList)
 		return pushInList(curList, arguments, Java_org_lwjgl_opengl_GL11_nglVertex3f);
-	var curPos = immediateModeData.vertexPos;
-	if(curPos > immediateModeData.vertexBuf.length)
-	{
-		console.log("glVertex3f overflow");
-		return;
-	}
-	immediateModeData.vertexBuf[curPos] = x;
-	immediateModeData.vertexBuf[curPos + 1] = y;
-	immediateModeData.vertexBuf[curPos + 2] = z;
-	immediateModeData.vertexPos = curPos + 3;
+	immReserve(1);
+	var n = imm.n;
+	imm.pos[n * 3] = x; imm.pos[n * 3 + 1] = y; imm.pos[n * 3 + 2] = z;
+	imm.col[n * 4] = immCur.r; imm.col[n * 4 + 1] = immCur.g; imm.col[n * 4 + 2] = immCur.b; imm.col[n * 4 + 3] = immCur.a;
+	imm.tex[n * 2] = immCur.s; imm.tex[n * 2 + 1] = immCur.t;
+	imm.n = n + 1;
 }
 
 function Java_org_lwjgl_opengl_GL11_nglEnd(lib, funcPtr)
 {
 	if(curList)
 		return pushInList(curList, arguments, Java_org_lwjgl_opengl_GL11_nglEnd);
-	// Upload vertex data
-	uploadDataImpl(immediateModeData.vertexBuf.subarray(0, immediateModeData.vertexPos), vertexBuffer, vertexPosition, 3, glCtx.FLOAT, 3 * 4);
-	// TODO: Should we do something about color data?
-	// Upload tex coord data
-	uploadDataImpl(immediateModeData.texCoordBuf.subarray(0, immediateModeData.texCoordPos), texCoordBuffer, texCoord, 2, glCtx.FLOAT, 2 * 4);
-	// NOTE: We count vertices
-	drawArraysImpl(immediateModeData.mode, 0, immediateModeData.vertexPos / 3);
+	var n = imm.n;
+	if(n == 0) return;
+	uploadDataImpl(imm.pos.subarray(0, n * 3), vertexBuffer, vertexPosition, 3, glCtx.FLOAT, 3 * 4);
+	uploadDataImpl(imm.col.subarray(0, n * 4), colorBuffer, colorLocation, 4, glCtx.FLOAT, 4 * 4);
+	uploadDataImpl(imm.tex.subarray(0, n * 2), texCoordBuffer, texCoord, 2, glCtx.FLOAT, 2 * 4);
+	drawArraysImpl(imm.mode, 0, n);
+	imm.n = 0;
 }
 
 // These stubs make sure audio creation fails sooner rather than later
@@ -1499,6 +1518,8 @@ const __natives = {
 	Java_org_lwjgl_opengl_GL11_nglEndList,
 	Java_org_lwjgl_opengl_GL11_nglColor3f,
 	Java_org_lwjgl_opengl_LinuxDisplay_nGetNativeCursorCapabilities,
+	Java_org_lwjgl_opengl_LinuxDisplay_nGetMinCursorSize,
+	Java_org_lwjgl_opengl_LinuxDisplay_nGetMaxCursorSize,
 	Java_org_lwjgl_opengl_GL11_nglShadeModel,
 	Java_org_lwjgl_opengl_GL11_nglClearDepth,
 	Java_org_lwjgl_opengl_GL11_nglDepthFunc,
