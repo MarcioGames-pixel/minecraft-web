@@ -182,6 +182,23 @@ function callList(listId)
 		c.f.apply(null, c.a);
 	}
 }
+var quadIdxBuf = glCtx.createBuffer(), quadIdxCap = 0;
+function ensureQuadIdx(nQuads)
+{
+	if(nQuads <= quadIdxCap) return;
+	var cap = Math.max(2048, quadIdxCap * 2);
+	while(cap < nQuads) cap *= 2;
+	var idx = new Uint32Array(cap * 6);
+	for(var q = 0; q < cap; q++)
+	{
+		var b = q * 4, o = q * 6;
+		idx[o] = b; idx[o + 1] = b + 1; idx[o + 2] = b + 2;
+		idx[o + 3] = b; idx[o + 4] = b + 2; idx[o + 5] = b + 3;
+	}
+	glCtx.bindBuffer(glCtx.ELEMENT_ARRAY_BUFFER, quadIdxBuf);
+	glCtx.bufferData(glCtx.ELEMENT_ARRAY_BUFFER, idx, glCtx.STATIC_DRAW);
+	quadIdxCap = cap;
+}
 function drawArraysImpl(mode, first, count)
 {
 	// TODO: Conditional
@@ -191,8 +208,10 @@ function drawArraysImpl(mode, first, count)
 	// We can render each quad a separate GL_TRIANGLE_FAN
 	if(mode == 7/*QUADS*/ && (count % 4) == 0)
 	{
-		for(var i=0;i<count;i+=4)
-			glCtx.drawArrays(glCtx.TRIANGLE_FAN, i, 4);
+		var nq = count / 4;
+		ensureQuadIdx(nq);
+		glCtx.bindBuffer(glCtx.ELEMENT_ARRAY_BUFFER, quadIdxBuf);
+		glCtx.drawElements(glCtx.TRIANGLES, nq * 6, glCtx.UNSIGNED_INT, 0);
 	}
 	else if(mode == glCtx.LINES || mode == glCtx.LINE_STRIP || mode == glCtx.TRIANGLE_STRIP || mode == glCtx.TRIANGLE_FAN)
 	{
@@ -208,8 +227,27 @@ function pushDrawArraysInList(list, v, mode, first, count)
 	var args = [mode, first, count, captureData(v, vertexData, count), captureData(v, colorData, count), captureData(v, texCoordData, count)];
 	list.push({f: drawArraysInList, a: args});
 }
+function bindCaptured(data, attributeLocation)
+{
+	if(!data.enabled) { glCtx.disableVertexAttribArray(attributeLocation); return; }
+	if(!data.glbuf)
+	{
+		data.glbuf = glCtx.createBuffer();
+		glCtx.bindBuffer(glCtx.ARRAY_BUFFER, data.glbuf);
+		glCtx.bufferData(glCtx.ARRAY_BUFFER, data.buf, glCtx.STATIC_DRAW);
+	}
+	else
+		glCtx.bindBuffer(glCtx.ARRAY_BUFFER, data.glbuf);
+	glCtx.vertexAttribPointer(attributeLocation, data.size, data.type, data.type != glCtx.FLOAT, data.stride, 0);
+	glCtx.enableVertexAttribArray(attributeLocation);
+}
 function drawArraysInList(mode, first, count, capturedVertexData, capturedColorData, capturedTexCoordData)
 {
+	bindCaptured(capturedVertexData, vertexPosition);
+	bindCaptured(capturedColorData, colorLocation);
+	bindCaptured(capturedTexCoordData, texCoord);
+	drawArraysImpl(mode, first, count);
+	return;
 	// Upload vertex data
 	uploadData(null, capturedVertexData, vertexBuffer, vertexPosition, count);
 	// Upload color data
@@ -221,6 +259,32 @@ function drawArraysInList(mode, first, count, capturedVertexData, capturedColorD
 // Fix the sampler to texture unit 0
 glCtx.uniform1i(samplerLocation, 0);
 var curList = null;
+var rec = null; // lote (glBegin..glEnd) sendo gravado dentro de uma lista
+var recCur = { r: 1, g: 1, b: 1, a: 1, s: 0, t: 0 };
+function bakeBatch(list, b)
+{
+	if(b.n == 0) return;
+	var d = { pos: new Float32Array(b.pos), col: new Float32Array(b.col), tex: new Float32Array(b.tex), bufs: null };
+	list.push({f: drawBaked, a: [b.mode, b.n, d]});
+}
+function drawBaked(mode, n, d)
+{
+	if(!d.bufs)
+	{
+		var mk = function(arr) { var bf = glCtx.createBuffer(); glCtx.bindBuffer(glCtx.ARRAY_BUFFER, bf); glCtx.bufferData(glCtx.ARRAY_BUFFER, arr, glCtx.STATIC_DRAW); return bf; };
+		d.bufs = [mk(d.pos), mk(d.col), mk(d.tex)];
+	}
+	glCtx.bindBuffer(glCtx.ARRAY_BUFFER, d.bufs[0]);
+	glCtx.vertexAttribPointer(vertexPosition, 3, glCtx.FLOAT, false, 12, 0);
+	glCtx.enableVertexAttribArray(vertexPosition);
+	glCtx.bindBuffer(glCtx.ARRAY_BUFFER, d.bufs[1]);
+	glCtx.vertexAttribPointer(colorLocation, 4, glCtx.FLOAT, false, 16, 0);
+	glCtx.enableVertexAttribArray(colorLocation);
+	glCtx.bindBuffer(glCtx.ARRAY_BUFFER, d.bufs[2]);
+	glCtx.vertexAttribPointer(texCoord, 2, glCtx.FLOAT, false, 8, 0);
+	glCtx.enableVertexAttribArray(texCoord);
+	drawArraysImpl(mode, 0, n);
+}
 var cmdLists = [null];
 // The first null implicitly solves resetting on 0 id
 var textureObjects = [null];
@@ -324,7 +388,7 @@ function keyHandler(e)
 			keyCode = 0xffe9;
 			break;
 	}
-	console.log(e.key, keyCode);
+	// (log de teclas removido: deixava o jogo lento)
 
 	eventQueue.push({ type: e.type, keyCode });
 	e.preventDefault();
@@ -788,7 +852,11 @@ function Java_org_lwjgl_opengl_GL11_nglDisableClientState(lib, v, funcPtr)
 function Java_org_lwjgl_opengl_GL11_nglColor4f(lib, r, g, b, a, funcPtr)
 {
 	if(curList)
+	{
+		recCur.r = r; recCur.g = g; recCur.b = b; recCur.a = a;
+		if(rec) return;
 		return pushInList(curList, arguments, Java_org_lwjgl_opengl_GL11_nglColor4f);
+	}
 	immCur.r = r; immCur.g = g; immCur.b = b; immCur.a = a;
 	glCtx.vertexAttrib4f(colorLocation, r, g, b, a);
 }
@@ -815,19 +883,32 @@ function Java_org_lwjgl_opengl_GL11_nglNewList(lib, list, mode, funcPtr)
 	checkNoList(curList);
 	assert(mode == 0x1300/*GL_COMPILE*/);
 	curList = cmdLists[list];
+	// Libera buffers de uma versao anterior da lista
+	for(var i = 0; i < curList.length; i++)
+	{
+		var c = curList[i];
+		if(c.f === drawBaked && c.a[2].bufs) { for(var k = 0; k < 3; k++) glCtx.deleteBuffer(c.a[2].bufs[k]); }
+	}
 	// Wipe out the current contents of the list if any
 	curList.length = 0;
+	rec = null;
+	recCur.r = recCur.g = recCur.b = recCur.a = 1; recCur.s = recCur.t = 0;
 }
 
 function Java_org_lwjgl_opengl_GL11_nglEndList(lib, funcPtr)
 {
+	rec = null;
 	curList = null;
 }
 
 function Java_org_lwjgl_opengl_GL11_nglColor3f(lib, r, g, b, funcPtr)
 {
 	if(curList)
+	{
+		recCur.r = r; recCur.g = g; recCur.b = b; recCur.a = 1;
+		if(rec) return;
 		return pushInList(curList, arguments, Java_org_lwjgl_opengl_GL11_nglColor3f);
+	}
 	immCur.r = r; immCur.g = g; immCur.b = b; immCur.a = 1;
 	glCtx.vertexAttrib4f(colorLocation, r, g, b, 1);
 }
@@ -1132,7 +1213,10 @@ function immReserve(extra)
 function Java_org_lwjgl_opengl_GL11_nglBegin(lib, mode, funcPtr)
 {
 	if(curList)
-		return pushInList(curList, arguments, Java_org_lwjgl_opengl_GL11_nglBegin);
+	{
+		rec = { mode: mode, pos: [], col: [], tex: [], n: 0 };
+		return;
+	}
 	imm.mode = mode;
 	imm.n = 0;
 }
@@ -1140,7 +1224,11 @@ function Java_org_lwjgl_opengl_GL11_nglBegin(lib, mode, funcPtr)
 function Java_org_lwjgl_opengl_GL11_nglTexCoord2f(lib, x, y, funcPtr)
 {
 	if(curList)
+	{
+		recCur.s = x; recCur.t = y;
+		if(rec) return;
 		return pushInList(curList, arguments, Java_org_lwjgl_opengl_GL11_nglTexCoord2f);
+	}
 	immCur.s = x;
 	immCur.t = y;
 }
@@ -1148,7 +1236,17 @@ function Java_org_lwjgl_opengl_GL11_nglTexCoord2f(lib, x, y, funcPtr)
 function Java_org_lwjgl_opengl_GL11_nglVertex3f(lib, x, y, z, funcPtr)
 {
 	if(curList)
+	{
+		if(rec)
+		{
+			rec.pos.push(x, y, z);
+			rec.col.push(recCur.r, recCur.g, recCur.b, recCur.a);
+			rec.tex.push(recCur.s, recCur.t);
+			rec.n++;
+			return;
+		}
 		return pushInList(curList, arguments, Java_org_lwjgl_opengl_GL11_nglVertex3f);
+	}
 	immReserve(1);
 	var n = imm.n;
 	imm.pos[n * 3] = x; imm.pos[n * 3 + 1] = y; imm.pos[n * 3 + 2] = z;
@@ -1160,7 +1258,10 @@ function Java_org_lwjgl_opengl_GL11_nglVertex3f(lib, x, y, z, funcPtr)
 function Java_org_lwjgl_opengl_GL11_nglEnd(lib, funcPtr)
 {
 	if(curList)
+	{
+		if(rec) { bakeBatch(curList, rec); rec = null; return; }
 		return pushInList(curList, arguments, Java_org_lwjgl_opengl_GL11_nglEnd);
+	}
 	var n = imm.n;
 	if(n == 0) return;
 	uploadDataImpl(imm.pos.subarray(0, n * 3), vertexBuffer, vertexPosition, 3, glCtx.FLOAT, 3 * 4);
