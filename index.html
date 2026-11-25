@@ -3,66 +3,200 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Minecraft Survival Test - Pure Local</title>
+    <title>Minecraft Classic - Survival Test 0.30</title>
     
     <!-- CheerpJ 5.0 (suporta applets + LWJGL/OpenGL via WebAssembly) -->
     <script src="https://cjrtnc.leaningtech.com/5.0/loader.js"></script>
     
+    <link rel="icon" type="image/png" href="assets/char.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+
     <style>
-        html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #111; color: #fff; font-family: Arial, sans-serif; -webkit-user-select: none; user-select: none; }
-        body { overflow: hidden; touch-action: none; }
-        
-        /* Tela de Inicializacao */
-        #startup { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #111; z-index: 9999; }
-        #box { width: min(90%, 500px); padding: 25px; background: #181818; border: 1px solid #333; border-radius: 8px; text-align: center; }
-        #title { font-size: 24px; margin-bottom: 18px; }
-        #status { color: #bbb; margin-bottom: 10px; }
-        #time { color: #777; font-family: monospace; font-size: 13px; }
-        #bar { height: 5px; margin-top: 20px; background: #333; border-radius: 5px; overflow: hidden; }
-        #barInner { width: 0%; height: 100%; background: #aaa; transition: width .3s; }
-        #startButton { display: none; margin-top: 20px; padding: 12px 24px; border: 0; border-radius: 5px; background: #eee; color: #111; font-size: 16px; font-weight: bold; cursor: pointer; }
-        #error { display: none; margin-top: 20px; padding: 10px; background: #241515; border: 1px solid #633; color: #ff8888; text-align: left; font-family: monospace; font-size: 12px; white-space: pre-wrap; max-height: 200px; overflow: auto; }
-        
-        /* Area do Jogo e Controles */
-        #game-container { display: none; width: 100vw; height: 100vh; position: relative; background: #000; }
+        :root {
+            --pixel: "Press Start 2P", "Courier New", monospace;
+            --mono: "VT323", "Courier New", monospace;
+            --stone: #7f7f7f; --stone-d: #373737; --stone-l: #c6c6c6;
+            --grass: #5fa13a; --dirt: #7a5230;
+        }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; font-family: Verdana, Geneva, Tahoma, sans-serif; color: #222;
+                     -webkit-user-select: none; user-select: none; }
+        body { overflow: hidden; background: #2b1d12; }
+        img, .pix { image-rendering: pixelated; image-rendering: crisp-edges; }
+
+        /* ===== Pagina inicial estilo 2009 ===== */
+        #startup { position: fixed; inset: 0; z-index: 9999; overflow-y: auto; overflow-x: hidden; touch-action: pan-y; -webkit-overflow-scrolling: touch;
+                   background-color: #3a2a1a;
+                   background-image: linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,.55)), url(assets/dirt.png);
+                   background-size: auto, 64px 64px; image-rendering: pixelated; }
+        .wrap { max-width: 920px; margin: 0 auto; padding: 0 12px; }
+
+        /* barra de navegacao de pedra */
+        .topbar { background: linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.35)), url(assets/rock.png); background-size: auto, 48px 48px;
+                  border-bottom: 4px solid #111; box-shadow: 0 4px 0 rgba(0,0,0,.4); position: sticky; top: 0; z-index: 5; }
+        .topbar .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding-top: 8px; padding-bottom: 8px; }
+        .topbar a { font-family: var(--pixel); font-size: 10px; color: #e8e8e8; text-decoration: none; text-shadow: 2px 2px 0 #222;
+                    padding: 9px 12px; border: 2px solid; border-color: #b5b5b5 #3a3a3a #3a3a3a #b5b5b5; background: #7c7c7c; }
+        .topbar a:hover, .topbar a:active { background: #8fa0d8; color: #fff; }
+        .topbar .spacer { flex: 1; }
+        .topbar .ver { font-family: var(--mono); font-size: 18px; color: #ddd; text-shadow: 2px 2px 0 #222; }
+
+        /* logo */
+        .hero { text-align: center; padding: 26px 0 14px; position: relative; }
+        .logo { display: inline-block; position: relative; font-family: var(--pixel); font-size: clamp(26px, 9.2vw, 68px); line-height: 1.1; letter-spacing: 2px;
+                color: #c9c9c9; text-transform: uppercase;
+                text-shadow: 1px 1px 0 #fff3, 3px 3px 0 #6b6b6b, 5px 5px 0 #4a4a4a, 7px 7px 0 #2c2c2c, 9px 9px 0 #151515, 11px 11px 12px #0008; }
+        .logo small { display: block; font-size: .32em; letter-spacing: 6px; color: #9fd36a; margin-top: 10px;
+                      text-shadow: 2px 2px 0 #2d4a14, 4px 4px 0 #111; }
+        .splash { position: absolute; right: -6px; bottom: -14px; font-family: var(--pixel); font-size: clamp(9px, 2.6vw, 15px); color: #ff0;
+                  text-shadow: 2px 2px 0 #3f3f00; transform: rotate(-16deg); white-space: nowrap; animation: pulse 0.6s ease-in-out infinite alternate; pointer-events: none; }
+        @keyframes pulse { from { transform: rotate(-16deg) scale(1); } to { transform: rotate(-16deg) scale(1.12); } }
+
+        /* faixa de letreiro */
+        .ticker { overflow: hidden; white-space: nowrap; background: #000; border-top: 3px solid var(--grass); border-bottom: 3px solid #111; }
+        .ticker span { display: inline-block; padding-left: 100%; font-family: var(--mono); font-size: 22px; color: #9f9; animation: scroll 28s linear infinite; }
+        @keyframes scroll { to { transform: translateX(-100%); } }
+
+        /* layout */
+        .grid { display: grid; grid-template-columns: 1fr 270px; gap: 16px; margin: 18px 0; align-items: start; }
+        @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } .splash { right: 4px; } }
+
+        /* paineis */
+        .panel { background: var(--stone-l); border: 3px solid; border-color: #fff #5a5a5a #5a5a5a #fff; outline: 3px solid #000; margin-bottom: 18px;
+                 box-shadow: 7px 7px 0 rgba(0,0,0,.45); }
+        .panel h2 { margin: 0; padding: 12px 12px 10px; font-family: var(--pixel); font-size: 12px; font-weight: normal; color: #fff;
+                    text-shadow: 2px 2px 0 #222; letter-spacing: 1px; border-top: 8px solid var(--grass); border-bottom: 3px solid #2a1c10;
+                    background: var(--dirt) url(assets/dirt.png); background-size: 32px 32px; image-rendering: pixelated; }
+        .panel .body { padding: 14px 16px; font-size: 13px; line-height: 1.55; }
+        .panel p { margin: 0 0 10px; }
+        .panel ul { margin: 0; padding-left: 18px; }
+        .panel li { margin-bottom: 5px; }
+        .panel a { color: #1a4fb0; }
+        kbd { font-family: var(--pixel); font-size: 9px; padding: 3px 5px; background: #8a8a8a; color: #fff; border: 2px solid; border-color: #d0d0d0 #3a3a3a #3a3a3a #d0d0d0; text-shadow: 1px 1px 0 #222; }
+
+        /* painel de jogar */
+        #status { font-family: var(--mono); font-size: 26px; line-height: 1.1; color: #111; min-height: 30px; margin-bottom: 8px; }
+        #time { font-family: var(--mono); font-size: 20px; color: #555; margin-top: 6px; }
+        #bar { height: 18px; background: #5b4331; border: 3px solid; border-color: #2a1c10 #8a6d52 #8a6d52 #2a1c10; overflow: hidden; }
+        #barInner { width: 0%; height: 100%; background: linear-gradient(#7bc14a, #5d9732); transition: width .3s; }
+        .mcbtn { display: inline-block; font-family: var(--pixel); font-size: 13px; color: #e8e8e8; text-shadow: 2px 2px 0 #3a3a3a; cursor: pointer;
+                 padding: 15px 22px; background: #707070; border: 3px solid; border-color: #c8c8c8 #2f2f2f #2f2f2f #c8c8c8; outline: 3px solid #000; }
+        .mcbtn:hover:not(:disabled), .mcbtn:active:not(:disabled) { background: #7f93d8; color: #ffffa0; }
+        .mcbtn:disabled { background: #555; color: #999; cursor: default; }
+        #startButton { display: none; margin-top: 18px; width: 100%; max-width: 360px; }
+        #error { display: none; margin-top: 18px; padding: 10px; background: #3a1010; border: 3px solid #a33; color: #ffb0b0; text-align: left;
+                 font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; user-select: text; -webkit-user-select: text; }
+        .hint { margin-top: 16px; padding: 8px 10px; background: #fff7c2; border: 2px dashed #a58f1c; font-size: 12px; }
+
+        /* cartao do jogador */
+        .steve { display: flex; gap: 12px; align-items: center; }
+        .head { width: 64px; height: 64px; flex: none; border: 3px solid #000; background: url(assets/char.png) -64px -64px / 512px 256px no-repeat; image-rendering: pixelated; }
+        .head2 { position: absolute; }
+        .steve b { font-family: var(--mono); font-size: 24px; }
+
+        .footer { margin: 8px 0 40px; padding: 14px; text-align: center; font-size: 11px; color: #ddd; text-shadow: 1px 1px 0 #000;
+                  background: rgba(0,0,0,.6); border-top: 4px solid var(--grass); }
+        .badge { display: inline-block; margin: 6px 3px 0; padding: 3px 8px; font-family: var(--pixel); font-size: 8px; color: #fff; background: #444; border: 2px solid; border-color: #aaa #222 #222 #aaa; }
+
+        /* ===== Area do jogo e controles ===== */
+        #game-container { display: none; width: 100vw; height: 100vh; position: relative; background: #000; touch-action: none; }
         #game { width: 100%; height: 100%; }
         canvas, cheerpj-applet { display: block; width: 100% !important; height: 100% !important; }
 
-        /* Camada de Controles Overlay */
         #controls-overlay { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
-        .btn-mobile { position: absolute; pointer-events: auto; background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 8px; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; user-select: none; -webkit-user-select: none; }
-        .btn-mobile:active { background: rgba(255, 255, 255, 0.4); }
-
-        /* D-PAD */
-        #dpad { position: absolute; bottom: 30px; left: 30px; width: 150px; height: 150px; pointer-events: auto; }
-        .dpad-btn { width: 45px; height: 45px; position: absolute; background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 6px; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; }
-        .dpad-btn:active { background: rgba(255, 255, 255, 0.4); }
+        .btn-mobile, .dpad-btn { position: absolute; pointer-events: auto; background: rgba(120,120,120,.45); border: 3px solid; border-color: rgba(255,255,255,.7) rgba(0,0,0,.6) rgba(0,0,0,.6) rgba(255,255,255,.7);
+                                 border-radius: 0; color: #fff; font-family: var(--pixel); font-size: 10px; text-shadow: 2px 2px 0 #222;
+                                 display: flex; align-items: center; justify-content: center; text-align: center; touch-action: none; -webkit-tap-highlight-color: transparent; }
+        .btn-mobile:active, .dpad-btn:active { background: rgba(143,160,216,.7); }
+        #dpad { position: absolute; bottom: 30px; left: 30px; width: 150px; height: 150px; pointer-events: none; }
+        .dpad-btn { width: 45px; height: 45px; font-size: 14px; }
         #btn-up    { top: 0; left: 52px; }
         #btn-left  { top: 52px; left: 0; }
         #btn-right { top: 52px; right: 0; }
         #btn-down  { bottom: 0; left: 52px; }
-
-        /* Botoes de Acao */
-        #btn-jump   { bottom: 50px; right: 40px; width: 65px; height: 65px; border-radius: 50%; font-size: 14px; }
-        #btn-attack { bottom: 130px; right: 120px; width: 60px; height: 60px; font-size: 12px; }
-        #btn-build  { bottom: 50px; right: 130px; width: 60px; height: 60px; font-size: 12px; }
-        
-        /* Menus */
-        #btn-esc   { top: 15px; left: 20px; width: 50px; height: 35px; font-size: 12px; }
-        #btn-inv   { top: 15px; right: 20px; width: 50px; height: 35px; font-size: 12px; }
+        #btn-jump   { bottom: 50px; right: 40px; width: 65px; height: 65px; }
+        #btn-attack { bottom: 130px; right: 120px; width: 62px; height: 62px; }
+        #btn-build  { bottom: 50px; right: 130px; width: 62px; height: 62px; }
+        #btn-esc   { top: 15px; left: 20px; width: 56px; height: 36px; }
+        #btn-inv   { top: 15px; right: 20px; width: 56px; height: 36px; }
     </style>
 </head>
 <body>
 
-    <!-- Splash Screen -->
+    <!-- ===== Pagina inicial ===== -->
     <div id="startup">
-        <div id="box">
-            <div id="title">Minecraft Survival Test</div>
-            <div id="status">Iniciando interpretador Java...</div>
-            <div id="time">0.0s</div>
-            <div id="bar"><div id="barInner"></div></div>
-            <button id="startButton">Iniciar Minecraft</button>
-            <div id="error"></div>
+        <div class="topbar">
+            <div class="wrap">
+                <a href="#jogar">Jogar</a>
+                <a href="#controles">Controles</a>
+                <a href="#sobre">Sobre</a>
+                <span class="spacer"></span>
+                <span class="ver">v0.30</span>
+            </div>
+        </div>
+
+        <div class="wrap">
+            <div class="hero">
+                <div class="logo">Minecraft<small>Classic</small><span class="splash">Survival Test!</span></div>
+            </div>
+        </div>
+
+        <div class="ticker"><span>&#9632; Bem-vindo ao Minecraft Classic! &#9632; Construa, escave e sobreviva direto no navegador &#9632; Nenhuma instalação necessária &#9632; Gire o celular para o modo paisagem antes de jogar &#9632;</span></div>
+
+        <div class="wrap">
+            <div class="grid">
+                <div>
+                    <div class="panel" id="jogar">
+                        <h2>&gt; Jogar agora</h2>
+                        <div class="body">
+                            <div id="status">Iniciando interpretador Java...</div>
+                            <div id="bar"><div id="barInner"></div></div>
+                            <div id="time">0.0s</div>
+                            <button id="startButton" class="mcbtn">Iniciar Minecraft</button>
+                            <div id="error"></div>
+                            <div class="hint">&#9888; <b>Dica:</b> o primeiro carregamento é demorado, e gerar o mapa pode levar até 1 ou 2 minutos no celular. Jogue com o aparelho deitado (paisagem).</div>
+                        </div>
+                    </div>
+
+                    <div class="panel" id="sobre">
+                        <h2>&gt; Sobre</h2>
+                        <div class="body">
+                            <p>Esta é uma versão do <b>Minecraft Classic (Survival Test 0.30)</b> que roda no navegador, usando <b>CheerpJ</b> para executar o Java e uma camada de LWJGL feita em JavaScript e WebGL.</p>
+                            <p>O mapa é gerado toda vez que você entra, então o progresso não é salvo. Ainda <b>não há som</b>.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="panel">
+                        <h2>&gt; Jogador</h2>
+                        <div class="body">
+                            <div class="steve"><div class="head pix"></div><div><b>Steve</b><br>Modo: Sobrevivência</div></div>
+                        </div>
+                    </div>
+
+                    <div class="panel" id="controles">
+                        <h2>&gt; Controles</h2>
+                        <div class="body">
+                            <ul>
+                                <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> mover</li>
+                                <li><kbd>ESPAÇO</kbd> pular</li>
+                                <li><kbd>B</kbd> escolher bloco</li>
+                                <li><kbd>ESC</kbd> menu</li>
+                                <li>Mouse esq./dir.: quebrar / colocar</li>
+                            </ul>
+                            <p style="margin-top:10px"><b>No celular:</b> arraste o dedo na tela para olhar ao redor e use os botões na tela.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer">
+                Minecraft &copy; Mojang AB. Esta página é um projeto de fã, sem ligação com a Mojang ou a Microsoft.<br>
+                <span class="badge">CheerpJ</span><span class="badge">WebGL</span><span class="badge">Java 8</span><span class="badge">Melhor em 1024&times;768 :)</span>
+            </div>
         </div>
     </div>
 
@@ -70,7 +204,7 @@
     <div id="game-container">
         <div id="game"></div>
         <canvas id="lwjgl" tabindex="0" style="position:absolute;inset:0;z-index:5;outline:none;"></canvas>
-        
+
         <div id="controls-overlay">
             <div id="dpad">
                 <div id="btn-up" class="dpad-btn">&#9650;</div>
@@ -80,7 +214,7 @@
             </div>
 
             <div id="btn-jump" class="btn-mobile">PULO</div>
-            <div id="btn-attack" class="btn-mobile">QUEBR</div>
+            <div id="btn-attack" class="btn-mobile">QUEBRAR</div>
             <div id="btn-build" class="btn-mobile">BLOCO</div>
 
             <div id="btn-esc" class="btn-mobile">ESC</div>
@@ -188,7 +322,7 @@
                 setStatus("Configurando ambiente mobile...", 50);
                 // /app/ = raiz do servidor; usamos a pasta desta pagina para achar cheerpj-natives mesmo em subpastas
                 const baseDir = location.pathname.replace(/[^\/]*$/, "");
-                const nativesPath = "/app" + baseDir + "cheerpj-natives/natives-v18m";
+                const nativesPath = "/app" + baseDir + "cheerpj-natives/natives-v19";
                 console.log("LWJGL natives em:", nativesPath + "/lwjgl.js");
                 await cheerpjInit({ javaProperties: ["java.library.path=" + nativesPath] }); // Java 8 (padrao) + LWJGL em JS
                 setStatus("Ambiente pronto!", 100);
@@ -196,6 +330,33 @@
             } catch (error) {
                 showError(error);
             }
+        }
+
+
+        // Verifica se os natives estao acessiveis e se o navegador tem WebGL2, ANTES de iniciar o Java
+        async function checarAmbiente() {
+            const base = location.pathname.replace(/[^\/]*$/, "") + "cheerpj-natives/natives-v19/";
+            // WebGL2
+            try {
+                const t = document.createElement("canvas");
+                const gl = t.getContext("webgl2");
+                if (!gl) throw new Error("WebGL2 indisponivel");
+                const ext = gl.getExtension("WEBGL_lose_context"); if (ext) ext.loseContext();
+                console.log("[checagem] WebGL2 ok");
+            } catch (e) { throw new Error("Seu navegador/aparelho nao abriu WebGL2: " + e.message); }
+            // arquivos nativos
+            for (const f of ["lwjgl.js", "jinput-linux64.js", "jawt.js"]) {
+                const url = base + f;
+                let r;
+                try { r = await fetch(url, { headers: { Range: "bytes=0-63" }, cache: "no-store" }); }
+                catch (e) { throw new Error("Nao consegui baixar " + url + " (" + e.message + ")"); }
+                const txt = await r.text();
+                console.log("[checagem] " + f + " -> HTTP " + r.status + " tipo=" + r.headers.get("content-type") + " range=" + r.headers.get("content-range") + " inicio=" + JSON.stringify(txt.slice(0, 30)));
+                if (!r.ok) throw new Error(f + " nao encontrado (HTTP " + r.status + ") em " + url + ". Suba a pasta cheerpj-natives/natives-v19 inteira no repositorio.");
+                if (/^\s*</.test(txt)) throw new Error(f + " veio como pagina HTML (nao e JavaScript). O servidor esta bloqueando ou o arquivo nao existe: " + url);
+                if (f === "lwjgl.js" && r.status !== 206) throw new Error("O servidor nao suporta o cabecalho Range (HTTP " + r.status + "). O CheerpJ precisa disso. Use GitHub Pages, Netlify ou Cloudflare Pages.");
+            }
+            console.log("[checagem] ambiente OK");
         }
 
         async function iniciarMinecraft() {
@@ -211,6 +372,8 @@
                     return;
                 }
                 startButton.disabled = true;
+                setStatus("Verificando arquivos...", 100);
+                await checarAmbiente();
                 setStatus("Construindo janela grafica...", 100);
                 gameZone.innerHTML = "";
 
@@ -258,7 +421,8 @@
                 setTimeout(() => glc.focus(), 500);
                 glc.addEventListener("click", () => glc.focus());
             } catch (error) {
-                showError(error);
+                startButton.disabled = false;
+                showError(error && error.message ? error.message : error);
             }
         }
 
