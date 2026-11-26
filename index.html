@@ -121,6 +121,27 @@
         #btn-build  { bottom: 50px; right: 130px; width: 62px; height: 62px; }
         #btn-esc   { top: 15px; left: 20px; width: 56px; height: 36px; }
         #btn-inv   { top: 15px; right: 20px; width: 56px; height: 36px; }
+
+        /* ===== Opcoes: skin / mundo / servidores ===== */
+        .opts { margin-top: 16px; max-width: 380px; font-size: 13px; line-height: 1.5; }
+        .opts h3 { font-family: var(--pixel); font-size: 10px; margin: 16px 0 8px; }
+        .opts h3:first-child { margin-top: 0; }
+        .opts label { display: block; margin: 6px 0; cursor: pointer; }
+        .opts .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0; }
+        .opts input[type=text], .opts input[type=number], .opts select { font: inherit; font-size: 13px; padding: 6px 8px; width: 100%; box-sizing: border-box; background: #fff; color: #111; border: 2px solid #555; }
+        .opts button { font: inherit; font-size: 12px; padding: 6px 10px; cursor: pointer; }
+        .opts small { opacity: .75; display: block; margin-top: 4px; }
+        #srvForm { display: none; margin-top: 8px; padding: 10px; background: rgba(0,0,0,.35); border: 2px solid #555; }
+        #srvForm .f { margin: 6px 0; }
+        #srvForm .f span { display: block; font-size: 11px; opacity: .8; }
+        #srvForm .two { display: grid; grid-template-columns: 1fr 90px; gap: 8px; }
+        /* preview 3D da skin (CSS 3D) */
+        #skin3d { position: relative; width: 100%; height: 230px; margin: 8px 0; perspective: 700px; background: linear-gradient(#6f9bd8, #9ec1ea 60%, #5a8a3a 60%); border: 2px solid #555; touch-action: none; cursor: grab; overflow: hidden; }
+        #skin3d.drag { cursor: grabbing; }
+        #skin3d .stage { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-style: preserve-3d; }
+        #skin3d .part { position: absolute; left: 0; top: 0; transform-style: preserve-3d; }
+        /* a regra global 'canvas {width:100% !important}' do jogo nao pode valer aqui */
+        #skin3d canvas { position: absolute; image-rendering: pixelated; backface-visibility: hidden; width: auto !important; height: auto !important; max-width: none !important; }
     </style>
 </head>
 <body>
@@ -155,6 +176,41 @@
                             <div id="bar"><div id="barInner"></div></div>
                             <div id="time">0.0s</div>
                             <button id="startButton" class="mcbtn">Iniciar Minecraft</button>
+                            <div class="opts">
+                                <h3>&gt; Jogador</h3>
+                                <input type="text" id="playerName" maxlength="16" placeholder="Seu nome (A-Z, 0-9, _)" autocomplete="off" spellcheck="false">
+
+                                <h3>&gt; Skin</h3>
+                                <div id="skin3d" title="Arraste para girar"><div class="stage" id="skinStage"></div></div>
+                                <div class="row">
+                                    <input type="file" id="skinFile" accept="image/png">
+                                    <button type="button" id="skinClear" style="display:none">Skin padr&atilde;o</button>
+                                </div>
+                                <small>PNG do Minecraft Classic (64&times;32; se for 64&times;64, usa a metade de cima). Fica salva neste aparelho.</small>
+
+                                <h3>&gt; Servidor</h3>
+                                <select id="serverSel"></select>
+                                <div class="row">
+                                    <button type="button" id="srvNew">Novo</button>
+                                    <button type="button" id="srvEdit">Editar</button>
+                                    <button type="button" id="srvDel">Apagar</button>
+                                </div>
+                                <div id="srvForm">
+                                    <div class="f"><span>Nome do servidor</span><input type="text" id="srvName" maxlength="40" placeholder="Meu servidor"></div>
+                                    <div class="f two">
+                                        <div><span>IP ou endere&ccedil;o</span><input type="text" id="srvHost" placeholder="exemplo.com ou 192.168.0.10" autocapitalize="none" spellcheck="false"></div>
+                                        <div><span>Porta</span><input type="number" id="srvPort" value="25565" min="1" max="65535"></div>
+                                    </div>
+                                    <div class="f"><span>mppass (opcional)</span><input type="text" id="srvPass" maxlength="64" autocapitalize="none" spellcheck="false"></div>
+                                    <div class="row"><button type="button" id="srvSave">Salvar</button><button type="button" id="srvCancel">Cancelar</button></div>
+                                </div>
+                                <small id="srvNote">Jogo solo: o mundo fica salvo neste aparelho. Servidores: navegadores n&atilde;o abrem conex&otilde;es TCP comuns, ent&atilde;o o servidor precisa ser acess&iacute;vel pela ponte do CheerpJ.</small>
+
+                                <h3>&gt; Mundo e som</h3>
+                                <label><input type="checkbox" id="freshWorld"> Come&ccedil;ar um mundo novo (apaga o mundo salvo)</label>
+                                <label><input type="checkbox" id="musicOn" checked> M&uacute;sica ambiente</label>
+                                <small>O mundo &eacute; salvo sozinho a cada ~45 s e volta quando voc&ecirc; abrir de novo neste aparelho/navegador.</small>
+                            </div>
                             <div id="error"></div>
                             <div class="hint">&#9888; <b>Dica:</b> o primeiro carregamento é demorado, e gerar o mapa pode levar até 1 ou 2 minutos no celular. Jogue com o aparelho deitado (paisagem).</div>
                         </div>
@@ -322,7 +378,7 @@
                 setStatus("Configurando ambiente mobile...", 50);
                 // /app/ = raiz do servidor; usamos a pasta desta pagina para achar cheerpj-natives mesmo em subpastas
                 const baseDir = location.pathname.replace(/[^\/]*$/, "");
-                const nativesPath = "/app" + baseDir + "cheerpj-natives/natives-v19d";
+                const nativesPath = "/app" + baseDir + "cheerpj-natives/natives-v21";
                 console.log("LWJGL natives em:", nativesPath + "/lwjgl.js");
                 await cheerpjInit({ javaProperties: ["java.library.path=" + nativesPath] }); // Java 8 (padrao) + LWJGL em JS
                 setStatus("Ambiente pronto!", 100);
@@ -335,7 +391,7 @@
 
         // Verifica se os natives estao acessiveis e se o navegador tem WebGL2, ANTES de iniciar o Java
         async function checarAmbiente() {
-            const base = location.pathname.replace(/[^\/]*$/, "") + "cheerpj-natives/natives-v19d/";
+            const base = location.pathname.replace(/[^\/]*$/, "") + "cheerpj-natives/natives-v21/";
             // WebGL2
             try {
                 const t = document.createElement("canvas");
@@ -352,14 +408,220 @@
                 catch (e) { throw new Error("Nao consegui baixar " + url + " (" + e.message + ")"); }
                 const txt = await r.text();
                 console.log("[checagem] " + f + " -> HTTP " + r.status + " tipo=" + r.headers.get("content-type") + " range=" + r.headers.get("content-range") + " inicio=" + JSON.stringify(txt.slice(0, 30)));
-                if (!r.ok) throw new Error(f + " nao encontrado (HTTP " + r.status + ") em " + url + ". Suba a pasta cheerpj-natives/natives-v19d inteira no repositorio.");
+                if (!r.ok) throw new Error(f + " nao encontrado (HTTP " + r.status + ") em " + url + ". Suba a pasta cheerpj-natives/natives-v21 inteira no repositorio.");
                 if (/^\s*</.test(txt)) throw new Error(f + " veio como pagina HTML (nao e JavaScript). O servidor esta bloqueando ou o arquivo nao existe: " + url);
                 if (f === "lwjgl.js" && r.status !== 206) throw new Error("O servidor nao suporta o cabecalho Range (HTTP " + r.status + "). O CheerpJ precisa disso. Use GitHub Pages, Netlify ou Cloudflare Pages.");
             }
             console.log("[checagem] ambiente OK");
         }
 
+        // WebAudio precisa ser criado/liberado dentro de um toque do usuario
+        function liberarAudio() {
+            try {
+                if (!window.mcAudioCtx) {
+                    const AC = window.AudioContext || window.webkitAudioContext;
+                    if (AC) window.mcAudioCtx = new AC();
+                }
+                if (window.mcAudioCtx && window.mcAudioCtx.state === "suspended") window.mcAudioCtx.resume();
+            } catch (e) { console.warn("audio:", e); }
+        }
+        ["touchstart", "mousedown", "keydown"].forEach(ev => document.addEventListener(ev, liberarAudio, { passive: true }));
+
+        // ===== Preferencias (guardadas no aparelho) =====
+        const LS = {
+            get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } },
+            set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+            del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+        };
+
+        // ===== Jogador =====
+        const playerName = document.getElementById("playerName");
+        playerName.value = LS.get("mc_name", "");
+        playerName.addEventListener("input", () => {
+            playerName.value = playerName.value.replace(/[^A-Za-z0-9_]/g, "").slice(0, 16);
+            LS.set("mc_name", playerName.value);
+        });
+        function nomeJogador() { return playerName.value || "Player"; }
+
+        // ===== Skin (PNG guardado no aparelho) + preview 3D =====
+        const SKIN_KEY = "mc_skin_v1";
+        const SKIN_PADRAO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAAABGdBTUEAALGPC/xhBQAAABh0RVh0U29mdHdhcmUAUGFpbnQuTkVUIHYzLjM2qefiJQAABONJREFUaEPll99rVEcUx6+IUk1ijbQYosYfG+OaRtb4g2JEY42/EYuRipqioqIxMQiLVlDE+INqKlSfAkq0UChIUXzwFyL2sU956X9TmofjfM/u9/ZknLs30cUN8cJh5s6cuTvfz5w5MzslSnmaF9QIXP4bGYmmT5um3qjjGfl3arT/28aSX7j9+p8pab8xofsBoLHuC8kt/FKN72iDnd+ek55NK+XnfWviEnW0wya0uLFMDoIpvql+ZiKATCYj1gBlUgDg6nPlURIKSkbApAVgxSICYHY7fBYAAMEXz3yQBKAz2zQ5tgDFQ/Dy+dUKYuHsqjghEgD2vG+TIgcAAIUzCpgMmQOY8UPlWBJtRX2y82YKDKKWzatSsasys2XFooLlFtXINw2FkyA7v0qPPviiDQDohzEYi2+gn99l0sQ4W8c7Iqmi4vHjFgAm3tIwS4VA4OrGWi1peN/cPEfam79WPwChD8agjVFiAZS6R1QcgE66rrBqBeFOmFvFxjq+18jLgTPy9te8/D3YL29v5139nDz+6ZCsWTpHx8AXYzA23i7um/h22j2i4gB0pepdKC+YVVhV944wRj23pFb+vHxSnt/o0/JJf58M5X+UNwN5GTq9Ww0+8MUYjEUd38I38Z52j5gYAOI8UC2ZuTPk5oE2GTq+VdqyX6l4PJ0bBuTFpVMqHnU8gAIf+GIMxjbVV8f7HwDS7hETB4BbMWyFloZaudHZKoNHvpNbh9Y5cdvk2aVj8upaPj7m/rp1Rn7v2S797s4PH/hiDMbiG1x9Aih1j6g4AIY9wvZYR04e9Hwv949v0T83ONbuHu5wAjfJhc1rR9mdwxvl6r516gNfjMFYfEO3QHE7pN0jKg4Ak6cAlEOnduiK/nJwvZzbkZOzW1ukr6NZxcIu7lkt139Yr4Y6fOD7W/dOHXv/xK5CWYRIkPYOgTrBVRyAP4H9O4fFWjabFWupEx4ejv8K+xejyPVFR4+WtrQfePRI9DswV8ftc2/r0rhMG57aXw4AoWsx2soCgOKL5ecNwEWAXX2F/LFPOSIg6b9BWSLA2wIfDWBlNi+wpsVdWm5r+2OU2T6/v611QKIrV/63ri6J7t2T6OFDTZg4Kpk80aZm/VFHG0TRnj6VCMb3JH/6+P0czzItIijwQwAAlgrq7i4Y6px4EQIAqEhOyPpjDPz9SVsA/Da/zz6UBGp//0MBMBLGEwEKIDRBThITRERYkdYf9ZB4GwUhwHaM3//JASDsKQp1OwECsG1J/gBFcLbuC7TR9KkiwOYB7HtrKh6iaJg8BUAQ62y3vgSGCAkBcONxKaPddJcv/P+whjbr4/enpYAolOQoECHu54j3AFhBgGEBhIRZYNwCoTHFbRMCMHi2K4aAfguhLABsHih1CsQ5gBAIgCFv9z9hEAC3jQ175goDxIpjBBAAyhAAbS9CGlMEMAGO9xgMngJ++FMUAfinQAhWAgCItSvsAwhtkbIAKAXovWPQJjz/BMB7Wtb2sjgjgGUIQKkckQqgvb1dYKWOQfTRr7e3V6zFgngh4er54c+E6AOw/vQxCdGK8yMAMGyOYL/dImMGkCSQ7Un9NkfgMuXfI/CuN0YDAH724sXEqveFIhC0YWwSAIoMRUjFAIRyCIEoBCcu9WrtfCxEf4VHJUCX6ELH4HgAvAMPTt9mhQSK5wAAAABJRU5ErkJggg==";
+        function skinAtual() { return LS.get(SKIN_KEY, ""); }
+
+        const skinSrc = document.createElement("canvas"); skinSrc.width = 64; skinSrc.height = 32;
+        const skinStage = document.getElementById("skinStage");
+        const skinBox = document.getElementById("skin3d");
+        const SC = 6; // px por unidade do modelo
+        // w,h,d em unidades; (x,y) = centro relativo ao centro do modelo; (u,v) = origem na textura; mirror = membro esquerdo
+        const PARTES = [
+            { w: 8, h: 8,  d: 8, x: 0,  y: -12, u: 0,  v: 0 },
+            { w: 8, h: 12, d: 4, x: 0,  y: -2,  u: 16, v: 16 },
+            { w: 4, h: 12, d: 4, x: -6, y: -2,  u: 40, v: 16 },
+            { w: 4, h: 12, d: 4, x: 6,  y: -2,  u: 40, v: 16, mirror: true },
+            { w: 4, h: 12, d: 4, x: -2, y: 10,  u: 0,  v: 16 },
+            { w: 4, h: 12, d: 4, x: 2,  y: 10,  u: 0,  v: 16, mirror: true }
+        ];
+        function faceCanvas(p, face) {
+            const { w, h, d, u, v } = p;
+            // retangulo da textura (sx, sy, sw, sh) e tamanho em unidades (W, H)
+            const R = {
+                right:  [u,         v + d, d, h, d, h],
+                front:  [u + d,     v + d, w, h, w, h],
+                left:   [u + d + w, v + d, d, h, d, h],
+                back:   [u + d + w + d, v + d, w, h, w, h],
+                top:    [u + d,     v,     w, d, w, d],
+                bottom: [u + d + w, v,     w, d, w, d]
+            };
+            let key = face;
+            if (p.mirror) key = face === "right" ? "left" : face === "left" ? "right" : face;
+            const [sx, sy, sw, sh] = R[key], [W, H] = R[face].slice(4);
+            const c = document.createElement("canvas");
+            c.width = W * SC; c.height = H * SC;
+            const g = c.getContext("2d"); g.imageSmoothingEnabled = false;
+            if (p.mirror) { g.translate(c.width, 0); g.scale(-1, 1); }
+            g.drawImage(skinSrc, sx, sy, sw, sh, 0, 0, c.width, c.height);
+            c.style.width = c.width + "px"; c.style.height = c.height + "px";
+            c.style.left = (-c.width / 2) + "px"; c.style.top = (-c.height / 2) + "px";
+            return c;
+        }
+        function montarModelo() {
+            skinStage.innerHTML = "";
+            const body = document.createElement("div"); body.className = "part"; body.id = "skinBody";
+            body.style.transformStyle = "preserve-3d";
+            for (const p of PARTES) {
+                const part = document.createElement("div"); part.className = "part";
+                part.style.transform = `translate3d(${p.x * SC}px, ${p.y * SC}px, 0)`;
+                const f = (face, t) => { const c = faceCanvas(p, face); c.style.transform = t; part.appendChild(c); };
+                f("front",  `translateZ(${p.d * SC / 2}px)`);
+                f("back",   `rotateY(180deg) translateZ(${p.d * SC / 2}px)`);
+                f("right",  `rotateY(-90deg) translateZ(${p.w * SC / 2}px)`);
+                f("left",   `rotateY(90deg) translateZ(${p.w * SC / 2}px)`);
+                f("top",    `rotateX(90deg) translateZ(${p.h * SC / 2}px)`);
+                f("bottom", `rotateX(-90deg) translateZ(${p.h * SC / 2}px)`);
+                body.appendChild(part);
+            }
+            skinStage.appendChild(body);
+        }
+        let angY = -30, angX = -12, arrastando = false, ultimoX = 0, ultimoY = 0;
+        function aplicarRotacao() {
+            const b = document.getElementById("skinBody");
+            if (b) b.style.transform = `rotateX(${angX}deg) rotateY(${angY}deg)`;
+        }
+        function carregarSkinNoModelo() {
+            const img = new Image();
+            img.onload = () => {
+                const g = skinSrc.getContext("2d"); g.clearRect(0, 0, 64, 32); g.drawImage(img, 0, 0, 64, 32);
+                montarModelo(); aplicarRotacao();
+            };
+            img.src = skinAtual() || SKIN_PADRAO;
+            document.getElementById("skinClear").style.display = skinAtual() ? "inline-block" : "none";
+        }
+        skinBox.addEventListener("pointerdown", (e) => { arrastando = true; ultimoX = e.clientX; ultimoY = e.clientY; skinBox.classList.add("drag"); skinBox.setPointerCapture(e.pointerId); });
+        skinBox.addEventListener("pointermove", (e) => {
+            if (!arrastando) return;
+            angY += (e.clientX - ultimoX) * 0.8; angX = Math.max(-60, Math.min(60, angX - (e.clientY - ultimoY) * 0.5));
+            ultimoX = e.clientX; ultimoY = e.clientY; aplicarRotacao();
+        });
+        const soltar = () => { arrastando = false; skinBox.classList.remove("drag"); };
+        skinBox.addEventListener("pointerup", soltar); skinBox.addEventListener("pointercancel", soltar);
+        (function girar() {
+            if (!arrastando && skinBox.offsetParent !== null) { angY += 0.6; aplicarRotacao(); }
+            requestAnimationFrame(girar);
+        })();
+        document.getElementById("skinFile").addEventListener("change", (e) => {
+            const f = e.target.files && e.target.files[0];
+            if (!f) return;
+            const img = new Image();
+            img.onload = () => {
+                const cv = document.createElement("canvas"); cv.width = 64; cv.height = 32;
+                const c = cv.getContext("2d"); c.imageSmoothingEnabled = false;
+                if (img.width === 64 && img.height >= 32) c.drawImage(img, 0, 0, 64, 32, 0, 0, 64, 32);
+                else c.drawImage(img, 0, 0, 64, 32);
+                LS.set(SKIN_KEY, cv.toDataURL("image/png"));
+                carregarSkinNoModelo();
+            };
+            img.onerror = () => alert("Esse arquivo nao parece uma imagem PNG valida.");
+            img.src = URL.createObjectURL(f);
+        });
+        document.getElementById("skinClear").addEventListener("click", () => {
+            LS.del(SKIN_KEY); document.getElementById("skinFile").value = ""; carregarSkinNoModelo();
+        });
+        carregarSkinNoModelo();
+
+        // ===== Servidores (nome, IP, porta) =====
+        const SRV_KEY = "mc_servers_v1", SRV_SEL = "mc_server_sel";
+        const serverSel = document.getElementById("serverSel"), srvForm = document.getElementById("srvForm");
+        let servidores = [];
+        try { servidores = JSON.parse(LS.get(SRV_KEY, "[]")) || []; } catch (e) { servidores = []; }
+        let editandoId = null;
+        function salvarServidores() { LS.set(SRV_KEY, JSON.stringify(servidores)); }
+        function preencherServidores(selecionar) {
+            serverSel.innerHTML = "";
+            const solo = new Option("Jogo solo (sem servidor)", "solo"); serverSel.add(solo);
+            for (const s of servidores) serverSel.add(new Option(`${s.name}  (${s.host}:${s.port})`, s.id));
+            serverSel.value = selecionar && [...serverSel.options].some(o => o.value === selecionar) ? selecionar : "solo";
+            LS.set(SRV_SEL, serverSel.value);
+            const sel = serverSel.value !== "solo";
+            document.getElementById("srvEdit").disabled = !sel; document.getElementById("srvDel").disabled = !sel;
+        }
+        function servidorSelecionado() { return servidores.find(s => s.id === serverSel.value) || null; }
+        function abrirForm(s) {
+            editandoId = s ? s.id : null;
+            document.getElementById("srvName").value = s ? s.name : "";
+            document.getElementById("srvHost").value = s ? s.host : "";
+            document.getElementById("srvPort").value = s ? s.port : 25565;
+            document.getElementById("srvPass").value = s ? s.pass : "";
+            srvForm.style.display = "block";
+        }
+        serverSel.addEventListener("change", () => preencherServidores(serverSel.value));
+        document.getElementById("srvNew").addEventListener("click", () => abrirForm(null));
+        document.getElementById("srvEdit").addEventListener("click", () => { const s = servidorSelecionado(); if (s) abrirForm(s); });
+        document.getElementById("srvCancel").addEventListener("click", () => { srvForm.style.display = "none"; });
+        document.getElementById("srvDel").addEventListener("click", () => {
+            const s = servidorSelecionado();
+            if (!s || !confirm(`Apagar o servidor "${s.name}"?`)) return;
+            servidores = servidores.filter(x => x.id !== s.id); salvarServidores(); preencherServidores("solo");
+        });
+        document.getElementById("srvSave").addEventListener("click", () => {
+            const host = document.getElementById("srvHost").value.trim();
+            const port = parseInt(document.getElementById("srvPort").value, 10);
+            let name = document.getElementById("srvName").value.trim() || host;
+            if (!/^[A-Za-z0-9._\-:\[\]]{1,253}$/.test(host)) { alert("Informe um IP ou endereco valido."); return; }
+            if (!(port >= 1 && port <= 65535)) { alert("A porta deve estar entre 1 e 65535."); return; }
+            const pass = document.getElementById("srvPass").value.trim();
+            let s = servidores.find(x => x.id === editandoId);
+            if (!s) { s = { id: "s" + Date.now().toString(36) }; servidores.push(s); }
+            Object.assign(s, { name, host, port, pass });
+            salvarServidores(); srvForm.style.display = "none"; preencherServidores(s.id);
+        });
+        preencherServidores(LS.get(SRV_SEL, "solo"));
+
+        // ===== Musica ambiente (Alpha: calm1-3) =====
+        const MUSICAS = ["music/calm1.ogg", "music/calm2.ogg", "music/calm3.ogg"];
+        const musicOn = document.getElementById("musicOn");
+        musicOn.checked = LS.get("mc_music", "1") === "1";
+        musicOn.addEventListener("change", () => { LS.set("mc_music", musicOn.checked ? "1" : "0"); if (!musicOn.checked) pararMusica(); });
+        let musicaEl = null, musicaTimer = null;
+        function pararMusica() { clearTimeout(musicaTimer); if (musicaEl) { musicaEl.pause(); musicaEl = null; } }
+        function agendarMusica(minS, maxS) {
+            clearTimeout(musicaTimer);
+            musicaTimer = setTimeout(tocarMusica, (minS + Math.random() * (maxS - minS)) * 1000);
+        }
+        function tocarMusica() {
+            if (!musicOn.checked) return;
+            const el = new Audio(MUSICAS[Math.floor(Math.random() * MUSICAS.length)]);
+            el.volume = 0.35; musicaEl = el;
+            el.addEventListener("ended", () => agendarMusica(120, 240));
+            el.addEventListener("error", () => agendarMusica(120, 240));
+            el.play().catch(() => {
+                // sem permissao de som ainda: tenta de novo no proximo toque
+                const t = () => { document.removeEventListener("touchstart", t); document.removeEventListener("mousedown", t); if (musicOn.checked) el.play().catch(() => {}); };
+                document.addEventListener("touchstart", t, { once: true }); document.addEventListener("mousedown", t, { once: true });
+            });
+        }
+
         async function iniciarMinecraft() {
+            liberarAudio();
             try {
                 // Tela cheia + paisagem (precisa ser dentro do toque do usuario)
                 try {
@@ -383,17 +645,28 @@
                 glc.width = W; glc.height = H;
                 window.lwjglCanvasElement = glc;
                 const applet = document.createElement("cheerpj-applet");
-                applet.setAttribute("code", "com.mojang.minecraft.MinecraftApplet");
+                const modoSeguro = new URLSearchParams(location.search).get("safe") === "1";
+                applet.setAttribute("code", modoSeguro ? "com.mojang.minecraft.MinecraftApplet" : "com.mojang.minecraft.MCApplet");
                 
                 // Usando caminhos estritamente relativos puros sem barra inicial para o CheerpJ 3.0 ler a pasta atual
-                applet.setAttribute("archive","minecraft.jar,lwjgl.jar,lwjgl_util.jar,jinput.jar,lzma.jar");
+                applet.setAttribute("archive","minecraft-v21.jar,lwjgl.jar,lwjgl_util.jar,jinput.jar,lzma.jar");
                 applet.setAttribute("width", String(W));
                 applet.setAttribute("height", String(H));
 
-                adicionarParametro(applet, "username", "Player Mobile");
+                adicionarParametro(applet, "username", nomeJogador());
                 adicionarParametro(applet, "sessionid", "0");
                 adicionarParametro(applet, "fullscreen", "false");
                 adicionarParametro(applet, "mobs", "true");
+                const skinSalva = skinAtual();
+                if (skinSalva) adicionarParametro(applet, "skin", skinSalva);
+                if (document.getElementById("freshWorld").checked) adicionarParametro(applet, "fresh", "1");
+                const srv = servidorSelecionado();
+                if (srv) {
+                    adicionarParametro(applet, "server", srv.host);
+                    adicionarParametro(applet, "port", String(srv.port));
+                    if (srv.pass) adicionarParametro(applet, "mppass", srv.pass);
+                }
+                if (musicOn.checked) agendarMusica(40, 90);
 
                 startup.style.display = "none";
                 gameContainer.style.display = "block";

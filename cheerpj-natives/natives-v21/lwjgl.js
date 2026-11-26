@@ -25,17 +25,18 @@ var vertexShaderSrc = `
 `;
 // NOTE: Only the default GL_MODULATE texEnv is supported here
 var fragmentShaderSrc = `
-	precision mediump float;
-	uniform float uTextureMask;
+	precision highp float;
+	uniform float uTextureMask;   // 1 = GL_TEXTURE_2D ligado
+	uniform float uAlphaTest;     // 1 = GL_ALPHA_TEST ligado
+	uniform float uAlphaRef;
 	uniform sampler2D uSampler;
-	uniform sampler2D uSampler2; // Additional texture sampler
 	varying vec2 vTexCoord;
 	varying vec4 vColor;
 	void main() {
-		vec4 texSample = texture2D(uSampler, vTexCoord) * uTextureMask;
-		vec4 texSample2 = texture2D(uSampler2, vTexCoord);
-		vec4 colorValue = vColor;
-		gl_FragColor = mix(texSample, colorValue, texSample2);
+		vec4 t = (uTextureMask > 0.5) ? texture2D(uSampler, vTexCoord) : vec4(1.0);
+		vec4 c = t * vColor;
+		if (uAlphaTest > 0.5 && c.a <= uAlphaRef) discard;
+		gl_FragColor = c;
 	}
 `;
 var vertexShader = glCtx.createShader(glCtx.VERTEX_SHADER);
@@ -62,6 +63,8 @@ var projLocation = glCtx.getUniformLocation(program, "projection");
 var samplerLocation = glCtx.getUniformLocation(program, "uSampler");
 var samplerLocation2 = glCtx.getUniformLocation(program, "uSampler2");
 var texMaskLocation = glCtx.getUniformLocation(program, "uTextureMask");
+var alphaTestLocation = glCtx.getUniformLocation(program, "uAlphaTest");
+var alphaRefLocation = glCtx.getUniformLocation(program, "uAlphaRef");
 var vertexData =
 {
 	enabled: false,
@@ -258,6 +261,10 @@ function drawArraysInList(mode, first, count, capturedVertexData, capturedColorD
 }
 // Fix the sampler to texture unit 0
 glCtx.uniform1i(samplerLocation, 0);
+glCtx.uniform1f(texMaskLocation, 1);
+glCtx.uniform1f(alphaTestLocation, 0);
+glCtx.uniform1f(alphaRefLocation, 0);
+glCtx.vertexAttrib4f(colorLocation, 1, 1, 1, 1);
 var curList = null;
 var rec = null; // lote (glBegin..glEnd) sendo gravado dentro de uma lista
 var recCur = { r: 1, g: 1, b: 1, a: 1, s: 0, t: 0 };
@@ -322,6 +329,16 @@ window.lwjglLook = function(dx, dy) {
 	const x = lockedMousePos.x += dx, y = lockedMousePos.y += dy;
 	if (eventQueue[0]?.type == "mousemove") { eventQueue[0].x = x; eventQueue[0].y = y; }
 	else eventQueue.push({ type: "mousemove", x, y });
+};
+
+/** true quando o jogo NAO prendeu o mouse (menus, tela de morte, pause) */
+window.lwjglMenuMode = function() { return !lockedMousePos; };
+/** Toque -> mouse nos menus. type: "move" | "down" | "up" (botao esquerdo) */
+window.lwjglPointer = function(type, clientX, clientY) {
+	const r = glCanvas.getBoundingClientRect();
+	const [x, y] = convertMousePos(clientX - r.left, clientY - r.top);
+	if (type == "move") eventQueue.push({ type: "mousemove", x, y });
+	else eventQueue.push({ type: type == "down" ? "mousedown" : "mouseup", x, y, button: 1 });
 };
 
 /** Convert from MouseEvent.button to X11 mouse button */
@@ -700,10 +717,10 @@ function Java_org_lwjgl_opengl_GL11_nglDisable(lib, a, funcPtr)
 		return pushInList(curList, arguments, Java_org_lwjgl_opengl_GL11_nglDisable);
 	if(a == glCtx.BLEND || a == glCtx.CULL_FACE || a == glCtx.DEPTH_TEST)
 		glCtx.disable(a);
-	else if(a == 0x806F/*GL_TEXTURE_3D*/)
-	{
+	else if(a == 0xDE1/*GL_TEXTURE_2D*/)
 		glCtx.uniform1f(texMaskLocation, 0);
-	}
+	else if(a == 0xBC0/*GL_ALPHA_TEST*/)
+		glCtx.uniform1f(alphaTestLocation, 0);
 	else if(verboseLog)
 		console.log("glDisable " + a.toString(16));
 }
@@ -714,10 +731,10 @@ function Java_org_lwjgl_opengl_GL11_nglEnable(lib, a, funcPtr)
 		return pushInList(curList, arguments, Java_org_lwjgl_opengl_GL11_nglEnable);
 	if(a == glCtx.BLEND || a == glCtx.CULL_FACE || a == glCtx.DEPTH_TEST)
 		glCtx.enable(a);
-	else if(a == 0x806F/*GL_TEXTURE_3D*/)
-	{
-	glCtx.uniform1f(texMaskLocation, 1);
-	}
+	else if(a == 0xDE1/*GL_TEXTURE_2D*/)
+		glCtx.uniform1f(texMaskLocation, 1);
+	else if(a == 0xBC0/*GL_ALPHA_TEST*/)
+		glCtx.uniform1f(alphaTestLocation, 1);
 	else if(verboseLog)
 		console.log("glEnable " + a.toString(16));
 }
@@ -861,12 +878,12 @@ function Java_org_lwjgl_opengl_GL11_nglColor4f(lib, r, g, b, a, funcPtr)
 	glCtx.vertexAttrib4f(colorLocation, r, g, b, a);
 }
 
-function Java_org_lwjgl_opengl_GL11_nglAlphaFunc()
+function Java_org_lwjgl_opengl_GL11_nglAlphaFunc(lib, func, ref, funcPtr)
 {
 	if(curList)
 		return pushInList(curList, arguments, Java_org_lwjgl_opengl_GL11_nglAlphaFunc);
-	if(verboseLog)
-		console.log("glAlphaFunc");
+	// O jogo usa GL_GREATER (516) com ref 0.0: descarta pixels com alpha <= ref
+	glCtx.uniform1f(alphaRefLocation, ref);
 }
 
 function Java_org_lwjgl_opengl_GL11_nglGenLists(lib, range, funcPtr)
@@ -1705,6 +1722,46 @@ const __natives = {
 // ===== Adaptacao LWJGL 2.4.2 (jar) <-> natives escritos para LWJGL 2.9 =====
 // 1) 2.4.2 chama GLContext.getFunctionAddress(String) (2.9 usava ngetFunctionAddress)
 __natives.Java_org_lwjgl_opengl_GLContext_getFunctionAddress = function(lib, name) { return 1; };
+
+// ===== Audio: ponte do Java (JsLine) para o WebAudio =====
+// PCM 16-bit estereo big-endian a 44100 Hz, em ByteBuffer direto
+let __ac = null, __acNext = 0, __acErro = false;
+__natives.Java_com_mojang_minecraft_JsAudio_nPlay = async function(lib, buf, len)
+{
+	if (__acErro) return;
+	try
+	{
+		if (!__ac)
+		{
+			__ac = window.mcAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
+			window.mcAudioCtx = __ac;
+			console.log("[audio] contexto criado, estado=" + __ac.state);
+		}
+		if (__ac.state === "suspended") __ac.resume();
+		const addr = Number(await buf.address());
+		const v = lib.getJNIDataView();
+		const frames = len >> 2;
+		const ab = __ac.createBuffer(2, frames, 44100);
+		const L = ab.getChannelData(0), R = ab.getChannelData(1);
+		for (let i = 0; i < frames; i++)
+		{
+			L[i] = v.getInt16(addr + i * 4, false) / 32768;
+			R[i] = v.getInt16(addr + i * 4 + 2, false) / 32768;
+		}
+		const src = __ac.createBufferSource();
+		src.buffer = ab;
+		src.connect(__ac.destination);
+		const t = Math.max(__ac.currentTime + 0.03, __acNext);
+		src.start(t);
+		__acNext = t + frames / 44100;
+	}
+	catch (e)
+	{
+		__acErro = true;
+		console.error("[audio] falhou, som desativado:", e && e.stack ? e.stack : e);
+	}
+};
+
 
 // 2) Em 2.4.2 funcoes com buffer recebem (Buffer, int offsetBytes, long funcPtr);
 //    em 2.9 recebiam (long memPtr, long funcPtr). Convertemos buffer+offset -> endereco.

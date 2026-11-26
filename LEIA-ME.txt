@@ -15,3 +15,23 @@ cheerpj-natives/ (repositorio oficial leaningtech/cheerpj-natives, Apache-2.0) =
 com 3 funcoes extras para este jogo (glVertex2f, glDeleteTextures, glInterleavedArrays). A pasta precisa ficar
 na raiz do site, ao lado do index.html (o java.library.path aponta para /app/cheerpj-natives/natives).
 Essa implementacao e PARCIAL: pode faltar nevoa/iluminacao/alguns efeitos visuais.
+
+
+=== v20: skin, salvar mundo, som ===
+SKIN: escolha um PNG (64x32) na pagina inicial. O jogo o recebe pelo parametro "skin" do applet (com.mojang.minecraft.MCApplet)
+  e o coloca em Player.newTexture. Obs.: em primeira pessoa o proprio jogador nao aparece, entao a skin so fica visivel se houver camera externa.
+SALVAR: o jogo salva/carrega "level.dat"; o caminho foi trocado para /files/level.dat (area persistente do CheerpJ, fica no navegador).
+  MCApplet salva sozinho a cada ~45 s (so se o mapa mudou). Marque "Comecar um mundo novo" para apagar o salvo.
+SOM: o jogo nao traz arquivos de audio (eram baixados de minecraft.net, que nao existe mais). Passos e sons de blocos sao SINTETIZADOS
+  em Java (MCApplet.synth). A chamada AudioSystem.getSourceDataLine foi trocada por com.mojang.minecraft.JsAudio, que manda o PCM
+  para o WebAudio (funcao nativa Java_com_mojang_minecraft_JsAudio_nPlay em lwjgl.js). Nao ha musica.
+Se algo falhar, abra a pagina com ?safe=1 para usar o applet original (MinecraftApplet), mantendo o resto igual.
+Codigo-fonte das classes novas: src/ .
+
+=== v21 ===
+SONS ORIGINAIS (Alpha): sound/step/{grass,gravel,stone,wood}1-4 e newsound/step/cloth1-4 foram convertidos para PCM e ficam
+  dentro de minecraft-v21.jar (/mcsnd/*.raw). "metal" nao tem arquivo original e continua sintetizado.
+MUSICA: pasta music/ (calm1-3.ogg do Alpha), tocada pelo navegador em intervalos aleatorios; da para desligar na pagina inicial.
+SKIN: preview 3D (CSS) na pagina inicial, arraste para girar.
+SERVIDORES: lista salva no aparelho (nome, IP, porta, mppass). Os dados vao como parametros server/port/mppass/username do applet.
+  Com servidor selecionado, o autosave do mundo local fica desligado. Navegadores nao abrem TCP comum: sem ponte de rede nao conecta.
