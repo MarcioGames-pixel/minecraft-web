@@ -9,6 +9,7 @@ public final class JsAudio {
 	private JsAudio() {}
 
 	public static SourceDataLine getSourceDataLine(AudioFormat format) throws LineUnavailableException {
+		if (!MCApplet.audioOn) throw new LineUnavailableException("som desligado");
 		return new JsLine(format);
 	}
 

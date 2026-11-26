@@ -26,8 +26,12 @@ public class MCApplet extends MinecraftApplet {
 	private static final long serialVersionUID = 1L;
 	static final String LEVEL = "/files/level.dat";
 	private static boolean started;
+	static volatile boolean audioOn = true;
 
 	public void init() {
+		audioOn = !"0".equals(getParameter("audio"));
+		if (getParameter("wsproxy") != null) JsChannel.proxy = getParameter("wsproxy");
+		if (!audioOn) System.out.println("[mc] som do jogo desligado");
 		try {
 			if ("1".equals(getParameter("fresh"))) {
 				new File(LEVEL).delete();
