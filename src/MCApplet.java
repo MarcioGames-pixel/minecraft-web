@@ -100,7 +100,7 @@ public class MCApplet extends MinecraftApplet {
 					System.out.println("[mc] sons registrados");
 				}
 				long now = System.currentTimeMillis();
-				if (!multiplayer && now - lastSave >= 45000) {
+				if (!multiplayer && now - lastSave >= 120000) {
 					lastSave = now;
 					Level lv = mc.d;
 					if (lv != null && lv.blocks != null) {
@@ -120,9 +120,14 @@ public class MCApplet extends MinecraftApplet {
 		File tmp = new File(LEVEL + ".tmp");
 		File dst = new File(LEVEL);
 		try {
+			// serializa na memoria e grava de uma vez: o GZIP escrevendo direto no arquivo gerava milhares de escritas
+			// pequenas no armazenamento do CheerpJ, o que travava o jogo
+			java.io.ByteArrayOutputStream mem = new java.io.ByteArrayOutputStream(1 << 20);
+			com.mojang.minecraft.level.a.a(lv, mem);
+			byte[] data = mem.toByteArray();
 			OutputStream out = new FileOutputStream(tmp);
 			try {
-				com.mojang.minecraft.level.a.a(lv, out);
+				out.write(data, 0, data.length);
 			} finally {
 				try { out.close(); } catch (Throwable ignored) { }
 			}

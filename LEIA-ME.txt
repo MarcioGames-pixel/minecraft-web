@@ -50,3 +50,6 @@ ate cair para 0-1 fps. Corrigido: glNewList/glDeleteLists liberam buffers e VAOs
 EXTRA: cada lote desenhado usa 1 VAO (1 bind + 1 draw em vez de ~12 chamadas GL); copia em memoria dos vertices e liberada apos
 subir para a GPU; envio imediato usa DYNAMIC_DRAW; removido o wrapper de diagnostico por chamada e o glGetError periodico.
 A pasta foi renomeada para natives-v22 para o navegador nao usar o lwjgl.js antigo em cache. Se ainda vier o antigo, Ctrl+F5.
+
+v23b: o autosave gravava o GZIP direto no arquivo (milhares de escritas pequenas no armazenamento do CheerpJ) e travava o jogo
+depois de salvar. Agora serializa na memoria e grava de uma vez; intervalo de 45 s -> 120 s. Jar renomeado: minecraft-v23.jar.
