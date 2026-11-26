@@ -130,7 +130,7 @@ function setCurMatrixTop(m)
 function uploadDataImpl(buf, buffer, attributeLocation, size, type, stride)
 {
 	glCtx.bindBuffer(glCtx.ARRAY_BUFFER, buffer);
-	glCtx.bufferData(glCtx.ARRAY_BUFFER, buf, glCtx.STATIC_DRAW);
+	glCtx.bufferData(glCtx.ARRAY_BUFFER, buf, glCtx.DYNAMIC_DRAW);
 	glCtx.vertexAttribPointer(attributeLocation, size, type, type != glCtx.FLOAT, stride, 0);
 	glCtx.enableVertexAttribArray(attributeLocation);
 }
@@ -238,26 +238,53 @@ function bindCaptured(data, attributeLocation)
 		data.glbuf = glCtx.createBuffer();
 		glCtx.bindBuffer(glCtx.ARRAY_BUFFER, data.glbuf);
 		glCtx.bufferData(glCtx.ARRAY_BUFFER, data.buf, glCtx.STATIC_DRAW);
+		data.buf = null; // dados ja estao na GPU: libera a copia na memoria
 	}
 	else
 		glCtx.bindBuffer(glCtx.ARRAY_BUFFER, data.glbuf);
 	glCtx.vertexAttribPointer(attributeLocation, data.size, data.type, data.type != glCtx.FLOAT, data.stride, 0);
 	glCtx.enableVertexAttribArray(attributeLocation);
 }
+// Um VAO por lote: o desenho de cada chunk vira 1 bind + 1 draw em vez de ~12 chamadas GL
 function drawArraysInList(mode, first, count, capturedVertexData, capturedColorData, capturedTexCoordData)
 {
-	bindCaptured(capturedVertexData, vertexPosition);
-	bindCaptured(capturedColorData, colorLocation);
-	bindCaptured(capturedTexCoordData, texCoord);
+	var st = capturedVertexData.vaoState;
+	if(!st)
+	{
+		st = capturedVertexData.vaoState = { vao: glCtx.createVertexArray() };
+		glCtx.bindVertexArray(st.vao);
+		bindCaptured(capturedVertexData, vertexPosition);
+		bindCaptured(capturedColorData, colorLocation);
+		bindCaptured(capturedTexCoordData, texCoord);
+		glCtx.bindBuffer(glCtx.ELEMENT_ARRAY_BUFFER, quadIdxBuf);
+	}
+	else
+		glCtx.bindVertexArray(st.vao);
 	drawArraysImpl(mode, first, count);
-	return;
-	// Upload vertex data
-	uploadData(null, capturedVertexData, vertexBuffer, vertexPosition, count);
-	// Upload color data
-	uploadData(null, capturedColorData, colorBuffer, colorLocation, count);
-	// Upload tex coord data
-	uploadData(null, capturedTexCoordData, texCoordBuffer, texCoord, count);
-	drawArraysImpl(mode, first, count);
+	glCtx.bindVertexArray(null);
+}
+// Libera os recursos de GPU de uma lista de comandos (glNewList sobre lista antiga / glDeleteLists)
+function freeCmdList(l)
+{
+	for(var i = 0; i < l.length; i++)
+	{
+		var c = l[i];
+		if(c.f === drawBaked)
+		{
+			var d = c.a[2];
+			if(d.vao) { glCtx.deleteVertexArray(d.vao); d.vao = null; }
+			if(d.bufs) { for(var k = 0; k < 3; k++) glCtx.deleteBuffer(d.bufs[k]); d.bufs = null; }
+		}
+		else if(c.f === drawArraysInList)
+		{
+			var a = c.a;
+			var vs = a[3].vaoState;
+			if(vs && vs.vao) { glCtx.deleteVertexArray(vs.vao); vs.vao = null; }
+			for(var j = 3; j <= 5; j++)
+				if(a[j].glbuf) { glCtx.deleteBuffer(a[j].glbuf); a[j].glbuf = null; }
+		}
+	}
+	l.length = 0;
 }
 // Fix the sampler to texture unit 0
 glCtx.uniform1i(samplerLocation, 0);
@@ -276,21 +303,28 @@ function bakeBatch(list, b)
 }
 function drawBaked(mode, n, d)
 {
-	if(!d.bufs)
+	if(!d.vao)
 	{
 		var mk = function(arr) { var bf = glCtx.createBuffer(); glCtx.bindBuffer(glCtx.ARRAY_BUFFER, bf); glCtx.bufferData(glCtx.ARRAY_BUFFER, arr, glCtx.STATIC_DRAW); return bf; };
 		d.bufs = [mk(d.pos), mk(d.col), mk(d.tex)];
+		d.pos = d.col = d.tex = null; // ja estao na GPU
+		d.vao = glCtx.createVertexArray();
+		glCtx.bindVertexArray(d.vao);
+		glCtx.bindBuffer(glCtx.ARRAY_BUFFER, d.bufs[0]);
+		glCtx.vertexAttribPointer(vertexPosition, 3, glCtx.FLOAT, false, 12, 0);
+		glCtx.enableVertexAttribArray(vertexPosition);
+		glCtx.bindBuffer(glCtx.ARRAY_BUFFER, d.bufs[1]);
+		glCtx.vertexAttribPointer(colorLocation, 4, glCtx.FLOAT, false, 16, 0);
+		glCtx.enableVertexAttribArray(colorLocation);
+		glCtx.bindBuffer(glCtx.ARRAY_BUFFER, d.bufs[2]);
+		glCtx.vertexAttribPointer(texCoord, 2, glCtx.FLOAT, false, 8, 0);
+		glCtx.enableVertexAttribArray(texCoord);
+		glCtx.bindBuffer(glCtx.ELEMENT_ARRAY_BUFFER, quadIdxBuf);
 	}
-	glCtx.bindBuffer(glCtx.ARRAY_BUFFER, d.bufs[0]);
-	glCtx.vertexAttribPointer(vertexPosition, 3, glCtx.FLOAT, false, 12, 0);
-	glCtx.enableVertexAttribArray(vertexPosition);
-	glCtx.bindBuffer(glCtx.ARRAY_BUFFER, d.bufs[1]);
-	glCtx.vertexAttribPointer(colorLocation, 4, glCtx.FLOAT, false, 16, 0);
-	glCtx.enableVertexAttribArray(colorLocation);
-	glCtx.bindBuffer(glCtx.ARRAY_BUFFER, d.bufs[2]);
-	glCtx.vertexAttribPointer(texCoord, 2, glCtx.FLOAT, false, 8, 0);
-	glCtx.enableVertexAttribArray(texCoord);
+	else
+		glCtx.bindVertexArray(d.vao);
 	drawArraysImpl(mode, 0, n);
+	glCtx.bindVertexArray(null);
 }
 var cmdLists = [null];
 // The first null implicitly solves resetting on 0 id
@@ -403,6 +437,16 @@ function keyHandler(e)
 			break;
 		case "Alt":
 			keyCode = 0xffe9;
+			break;
+		// Teclas "especiais": o LWJGL espera o keysym X11 (XK_Tab etc.), nao o keyCode do navegador
+		case "Tab": // lista de jogadores (multiplayer) / atirar flecha (survival)
+			keyCode = 0xff09;
+			break;
+		case "Enter":
+			keyCode = 0xff0d;
+			break;
+		case "Backspace":
+			keyCode = 0xff08;
 			break;
 	}
 	// (log de teclas removido: deixava o jogo lento)
@@ -886,13 +930,28 @@ function Java_org_lwjgl_opengl_GL11_nglAlphaFunc(lib, func, ref, funcPtr)
 	glCtx.uniform1f(alphaRefLocation, ref);
 }
 
+var freeListIds = [];
 function Java_org_lwjgl_opengl_GL11_nglGenLists(lib, range, funcPtr)
 {
 	checkNoList(curList);
+	if(range == 1 && freeListIds.length)
+		return freeListIds.pop();
 	var ret = cmdLists.length;
 	for(var i=0;i<range;i++)
 		cmdLists.push([]);
 	return ret;
+}
+
+function Java_org_lwjgl_opengl_GL11_nglDeleteLists(lib, list, range, funcPtr)
+{
+	for(var i = 0; i < range; i++)
+	{
+		var id = list + i;
+		var l = cmdLists[id];
+		if(!l || id <= 0) continue;
+		freeCmdList(l);
+		freeListIds.push(id);
+	}
 }
 
 function Java_org_lwjgl_opengl_GL11_nglNewList(lib, list, mode, funcPtr)
@@ -900,14 +959,8 @@ function Java_org_lwjgl_opengl_GL11_nglNewList(lib, list, mode, funcPtr)
 	checkNoList(curList);
 	assert(mode == 0x1300/*GL_COMPILE*/);
 	curList = cmdLists[list];
-	// Libera buffers de uma versao anterior da lista
-	for(var i = 0; i < curList.length; i++)
-	{
-		var c = curList[i];
-		if(c.f === drawBaked && c.a[2].bufs) { for(var k = 0; k < 3; k++) glCtx.deleteBuffer(c.a[2].bufs[k]); }
-	}
-	// Wipe out the current contents of the list if any
-	curList.length = 0;
+	// Libera buffers/VAOs da versao anterior da lista e esvazia
+	freeCmdList(curList);
 	rec = null;
 	recCur.r = recCur.g = recCur.b = recCur.a = 1; recCur.s = recCur.t = 0;
 }
@@ -1637,6 +1690,7 @@ const __natives = {
 	Java_org_lwjgl_opengl_GL11_nglAlphaFunc,
 	Java_org_lwjgl_opengl_GL11_nglGenLists,
 	Java_org_lwjgl_opengl_GL11_nglNewList,
+	Java_org_lwjgl_opengl_GL11_nglDeleteLists,
 	Java_org_lwjgl_opengl_GL11_nglEndList,
 	Java_org_lwjgl_opengl_GL11_nglColor3f,
 	Java_org_lwjgl_opengl_LinuxDisplay_nGetNativeCursorCapabilities,
@@ -2298,39 +2352,8 @@ for (const [short, r] of Object.entries(__stubTable))
 	};
 }
 
-// ===== Diagnostico: registra 1a chamada de cada native, excecoes e quadros por segundo =====
-{
-	const seen = new Set();
-	for (const name of Object.keys(__natives))
-	{
-		const orig = __natives[name];
-		if (typeof orig !== "function") continue;
-		__natives[name] = function(...a)
-		{
-			if (!seen.has(name)) { seen.add(name); console.log("[1a chamada]", name.replace("Java_org_lwjgl_", "")); }
-			try
-			{
-				const r = orig.apply(this, a);
-				if (r && typeof r.then === "function")
-					return r.catch(e => { console.error("[native erro]", name, e && e.stack ? e.stack : e); throw e; });
-				return r;
-			}
-			catch (e)
-			{
-				console.error("[native erro]", name, e && e.stack ? e.stack : e);
-				throw e;
-			}
-		};
-	}
-	let lastFrames = 0;
-	setInterval(() => {
-		let err = "?";
-		try { err = glCtx.getError(); } catch (e) {}
-		console.log("[diag] quadros=" + frameCount + " (+" + (frameCount - lastFrames) + ") glErro=" + err + " lost=" + glCtx.isContextLost() + " fb=" + FBW + "x" + FBH + " canvas=" + glCanvas.width + "x" + glCanvas.height);
-		lastFrames = frameCount;
-	}, 3000);
-	glCanvas.addEventListener("webglcontextlost", () => console.error("[diag] WEBGL CONTEXT PERDIDO"));
-}
+// (diagnostico por chamada removido: o wrapper + glGetError periodico custavam CPU/sincronizacao a cada quadro)
+glCanvas.addEventListener("webglcontextlost", () => console.error("[diag] WEBGL CONTEXT PERDIDO"));
 
 console.log("[lwjgl.js] carregado OK (" + Object.keys(__natives).length + " funcoes)");
 export default __natives;

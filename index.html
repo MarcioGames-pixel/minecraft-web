@@ -121,6 +121,13 @@
         #btn-build  { bottom: 50px; right: 130px; width: 62px; height: 62px; }
         #btn-esc   { top: 15px; left: 20px; width: 56px; height: 36px; }
         #btn-inv   { top: 15px; right: 20px; width: 56px; height: 36px; }
+        #btn-arrow { bottom: 130px; right: 40px; width: 62px; height: 62px; }
+        #btn-tab   { top: 15px; right: 86px; width: 56px; height: 36px; }
+        #btn-more  { top: 15px; right: 152px; width: 56px; height: 36px; }
+        #more-panel { position: absolute; top: 58px; right: 20px; display: none; flex-direction: column; gap: 6px; pointer-events: none; }
+        #more-panel.open { display: flex; }
+        #more-panel .btn-mobile { position: static; width: 150px; height: 34px; pointer-events: auto; }
+        .btn-mobile.on { background: rgba(143,160,216,.7); }
 
         /* ===== Opcoes: skin / mundo / servidores ===== */
         .opts { margin-top: 16px; max-width: 380px; font-size: 13px; line-height: 1.5; }
@@ -273,8 +280,17 @@
             <div id="btn-attack" class="btn-mobile">QUEBRAR</div>
             <div id="btn-build" class="btn-mobile">BLOCO</div>
 
+            <div id="btn-arrow" class="btn-mobile">FLECHA</div>
+
             <div id="btn-esc" class="btn-mobile">ESC</div>
             <div id="btn-inv" class="btn-mobile">INV</div>
+            <div id="btn-tab" class="btn-mobile">TAB</div>
+            <div id="btn-more" class="btn-mobile">MAIS</div>
+            <div id="more-panel">
+                <div id="btn-fog" class="btn-mobile">NEVOA (F)</div>
+                <div id="btn-savepos" class="btn-mobile">SALVAR POS</div>
+                <div id="btn-loadpos" class="btn-mobile">CARREGAR POS</div>
+            </div>
         </div>
     </div>
 
@@ -378,7 +394,7 @@
                 setStatus("Configurando ambiente mobile...", 50);
                 // /app/ = raiz do servidor; usamos a pasta desta pagina para achar cheerpj-natives mesmo em subpastas
                 const baseDir = location.pathname.replace(/[^\/]*$/, "");
-                const nativesPath = "/app" + baseDir + "cheerpj-natives/natives-v21";
+                const nativesPath = "/app" + baseDir + "cheerpj-natives/natives-v22";
                 console.log("LWJGL natives em:", nativesPath + "/lwjgl.js");
                 await cheerpjInit({ javaProperties: ["java.library.path=" + nativesPath] }); // Java 8 (padrao) + LWJGL em JS
                 setStatus("Ambiente pronto!", 100);
@@ -391,7 +407,7 @@
 
         // Verifica se os natives estao acessiveis e se o navegador tem WebGL2, ANTES de iniciar o Java
         async function checarAmbiente() {
-            const base = location.pathname.replace(/[^\/]*$/, "") + "cheerpj-natives/natives-v21/";
+            const base = location.pathname.replace(/[^\/]*$/, "") + "cheerpj-natives/natives-v22/";
             // WebGL2
             try {
                 const t = document.createElement("canvas");
@@ -408,7 +424,7 @@
                 catch (e) { throw new Error("Nao consegui baixar " + url + " (" + e.message + ")"); }
                 const txt = await r.text();
                 console.log("[checagem] " + f + " -> HTTP " + r.status + " tipo=" + r.headers.get("content-type") + " range=" + r.headers.get("content-range") + " inicio=" + JSON.stringify(txt.slice(0, 30)));
-                if (!r.ok) throw new Error(f + " nao encontrado (HTTP " + r.status + ") em " + url + ". Suba a pasta cheerpj-natives/natives-v21 inteira no repositorio.");
+                if (!r.ok) throw new Error(f + " nao encontrado (HTTP " + r.status + ") em " + url + ". Suba a pasta cheerpj-natives/natives-v22 inteira no repositorio.");
                 if (/^\s*</.test(txt)) throw new Error(f + " veio como pagina HTML (nao e JavaScript). O servidor esta bloqueando ou o arquivo nao existe: " + url);
                 if (f === "lwjgl.js" && r.status !== 206) throw new Error("O servidor nao suporta o cabecalho Range (HTTP " + r.status + "). O CheerpJ precisa disso. Use GitHub Pages, Netlify ou Cloudflare Pages.");
             }
@@ -672,42 +688,79 @@
                 gameContainer.style.display = "block";
                 gameZone.appendChild(applet);
 
-                configurarMapeamentoBotoes();
-                // Arrastar o dedo no canvas = mover a camera
-                let lastTouch = null;
-                let menuTouch = false;
+                const api = configurarMapeamentoBotoes();
+
+                // ===== Gestos na tela (estilo Minecraft PE) =====
+                //  - tocar rapido          -> coloca bloco (botao direito)
+                //  - tocar e SEGURAR       -> ataca / quebra bloco (botao esquerdo segurado)
+                //  - arrastar o dedo       -> mover a camera
+                const TAP_SLOP = 12;   // px que o dedo pode mexer e ainda contar como toque parado
+                const HOLD_MS = 280;   // tempo parado para virar "segurar"
+                const toques = new Map();
+                let segurando = null;  // id do dedo que esta com o botao esquerdo apertado
                 const emMenu = () => !!(window.lwjglMenuMode && window.lwjglMenuMode());
+
                 glc.addEventListener("touchstart", (e) => {
                     e.preventDefault();
-                    const t = e.changedTouches[0];
-                    lastTouch = { id: t.identifier, x: t.clientX, y: t.clientY };
-                    // Menus / tela de morte: o toque vira clique do mouse
-                    if (emMenu() && window.lwjglPointer) {
-                        menuTouch = true;
-                        window.lwjglPointer("move", t.clientX, t.clientY);
-                        window.lwjglPointer("down", t.clientX, t.clientY);
+                    for (const t of e.changedTouches) {
+                        const id = t.identifier;
+                        const s = { x: t.clientX, y: t.clientY, x0: t.clientX, y0: t.clientY, moveu: false, menu: false, timer: 0 };
+                        toques.set(id, s);
+                        // Menus / tela de morte: o toque vira clique do mouse
+                        if (emMenu() && window.lwjglPointer) {
+                            s.menu = true;
+                            window.lwjglPointer("move", t.clientX, t.clientY);
+                            window.lwjglPointer("down", t.clientX, t.clientY);
+                            continue;
+                        }
+                        s.timer = setTimeout(() => {
+                            s.timer = 0;
+                            if (!s.moveu && segurando === null && toques.has(id)) {
+                                segurando = id;
+                                api.mouse(0, "mousedown");
+                            }
+                        }, HOLD_MS);
                     }
                 }, { passive: false });
+
                 glc.addEventListener("touchmove", (e) => {
                     e.preventDefault();
-                    if (!lastTouch) return;
                     for (const t of e.changedTouches) {
-                        if (t.identifier !== lastTouch.id) continue;
-                        if (menuTouch) { window.lwjglPointer("move", t.clientX, t.clientY); lastTouch.x = t.clientX; lastTouch.y = t.clientY; continue; }
-                        const k = 1.5;
-                        if (window.lwjglLook) window.lwjglLook((t.clientX - lastTouch.x) * k, (t.clientY - lastTouch.y) * k);
-                        lastTouch.x = t.clientX; lastTouch.y = t.clientY;
+                        const s = toques.get(t.identifier);
+                        if (!s) continue;
+                        if (s.menu) { window.lwjglPointer("move", t.clientX, t.clientY); s.x = t.clientX; s.y = t.clientY; continue; }
+                        if (!s.moveu && Math.hypot(t.clientX - s.x0, t.clientY - s.y0) > TAP_SLOP) {
+                            s.moveu = true;
+                            if (s.timer) { clearTimeout(s.timer); s.timer = 0; }
+                        }
+                        if (s.moveu) {
+                            const k = 1.5;
+                            if (window.lwjglLook) window.lwjglLook((t.clientX - s.x) * k, (t.clientY - s.y) * k);
+                        }
+                        s.x = t.clientX; s.y = t.clientY;
                     }
                 }, { passive: false });
+
                 const fimToque = (e) => {
-                    if (menuTouch && window.lwjglPointer) {
-                        const t = (lastTouch && Array.from(e.changedTouches).find(c => c.identifier === lastTouch.id)) || e.changedTouches[0];
-                        const x = t ? t.clientX : lastTouch.x, y = t ? t.clientY : lastTouch.y;
-                        window.lwjglPointer("move", x, y);
-                        setTimeout(() => window.lwjglPointer("up", x, y), 60);
-                        menuTouch = false;
+                    const cancelado = e.type === "touchcancel";
+                    for (const t of e.changedTouches) {
+                        const id = t.identifier;
+                        const s = toques.get(id);
+                        if (!s) continue;
+                        toques.delete(id);
+                        const aindaNaoSegurou = s.timer !== 0;
+                        if (s.timer) { clearTimeout(s.timer); s.timer = 0; }
+                        if (s.menu) {
+                            window.lwjglPointer("move", t.clientX, t.clientY);
+                            setTimeout(() => window.lwjglPointer("up", t.clientX, t.clientY), 60);
+                        } else if (segurando === id) {
+                            segurando = null;
+                            api.mouse(0, "mouseup");           // soltou: para de quebrar
+                        } else if (aindaNaoSegurou && !s.moveu && !cancelado) {
+                            api.mouse(2, "mousedown");         // toque rapido: coloca bloco
+                            setTimeout(() => api.mouse(2, "mouseup"), 50);
+                        }
                     }
-                    lastTouch = null;
                 };
                 glc.addEventListener("touchend", fimToque);
                 glc.addEventListener("touchcancel", fimToque);
@@ -727,77 +780,110 @@
         }
 
         function configurarMapeamentoBotoes() {
-            function simularTecla(codigoTecla, tipoEvento) {
-                let keyCodeNum = 0;
-                if (codigoTecla === "Space") keyCodeNum = 32;
-                else if (codigoTecla === "Escape") keyCodeNum = 27;
-                else keyCodeNum = codigoTecla.charCodeAt(3);
+            const canvasJogo = document.getElementById("lwjgl");
 
+            // Teclas: { key, code, kc } -> KeyboardEvent entregue ao canvas (o lwjgl.js converte para o LWJGL)
+            const K = {
+                W:     { key: "w",      code: "KeyW",   kc: 87 },
+                A:     { key: "a",      code: "KeyA",   kc: 65 },
+                S:     { key: "s",      code: "KeyS",   kc: 83 },
+                D:     { key: "d",      code: "KeyD",   kc: 68 },
+                B:     { key: "b",      code: "KeyB",   kc: 66 },
+                F:     { key: "f",      code: "KeyF",   kc: 70 },
+                R:     { key: "r",      code: "KeyR",   kc: 82 },
+                Space: { key: " ",      code: "Space",  kc: 32 },
+                Esc:   { key: "Escape", code: "Escape", kc: 27 },
+                Tab:   { key: "Tab",    code: "Tab",    kc: 9  },
+                Enter: { key: "Enter",  code: "Enter",  kc: 13 }
+            };
+
+            function simularTecla(tecla, tipoEvento) {
                 const evento = new KeyboardEvent(tipoEvento, {
-                    bubbles: true,
-                    cancelable: true,
-                    key: codigoTecla,
-                    code: codigoTecla,
-                    keyCode: keyCodeNum
+                    bubbles: true, cancelable: true,
+                    key: tecla.key, code: tecla.code, keyCode: tecla.kc, which: tecla.kc
                 });
-                
                 document.dispatchEvent(evento);
-                const canvasJogo = document.getElementById("lwjgl");
                 if (canvasJogo) canvasJogo.dispatchEvent(evento);
             }
 
-            const mapaTeclas = [
-                { id: "btn-up", key: "KeyW" },
-                { id: "btn-left", key: "KeyA" },
-                { id: "btn-down", key: "KeyS" },
-                { id: "btn-right", key: "KeyD" },
-                { id: "btn-jump", key: "Space" },
-                { id: "btn-inv", key: "KeyB" }, 
-                { id: "btn-esc", key: "Escape" }
-            ];
-
-            mapaTeclas.forEach(alvo => {
-                const elemento = document.getElementById(alvo.id);
-                if (!elemento) return;
-                
-                elemento.addEventListener("touchstart", (e) => {
-                    e.preventDefault();
-                    simularTecla(alvo.key, "keydown");
-                });
-                elemento.addEventListener("touchend", (e) => {
-                    e.preventDefault();
-                    simularTecla(alvo.key, "keyup");
-                });
-            });
-
-            const btnAttack = document.getElementById("btn-attack");
-            const btnBuild = document.getElementById("btn-build");
-
             function simularCliqueMouse(botaoMouse, tipoEvento) {
-                const canvasJogo = document.getElementById("lwjgl") || document;
-                const rect = canvasJogo.getBoundingClientRect();
-                
-                const eventoMouse = new MouseEvent(tipoEvento, {
-                    bubbles: true,
-                    cancelable: true,
-                    view: window,
-                    button: botaoMouse,
+                const alvo = canvasJogo || document;
+                const rect = alvo.getBoundingClientRect();
+                alvo.dispatchEvent(new MouseEvent(tipoEvento, {
+                    bubbles: true, cancelable: true, view: window, button: botaoMouse,
                     clientX: rect.left + rect.width / 2,
                     clientY: rect.top + rect.height / 2
-                });
-                
-                canvasJogo.dispatchEvent(eventoMouse);
+                }));
             }
 
-            if (btnAttack) {
-                btnAttack.addEventListener("touchstart", (e) => { e.preventDefault(); simularCliqueMouse(0, "mousedown"); }); 
-                btnAttack.addEventListener("touchend", (e) => { e.preventDefault(); simularCliqueMouse(0, "mouseup"); });
+            // Botao que segura a tecla enquanto o dedo esta nele (dedos independentes = multitoque)
+            function botaoSegura(id, tecla) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                let ativos = 0;
+                el.addEventListener("touchstart", (e) => {
+                    e.preventDefault();
+                    if (ativos++ === 0) simularTecla(tecla, "keydown");
+                }, { passive: false });
+                const solta = (e) => {
+                    e.preventDefault();
+                    ativos = Math.max(0, ativos - e.changedTouches.length);
+                    if (ativos === 0) simularTecla(tecla, "keyup");
+                };
+                el.addEventListener("touchend", solta, { passive: false });
+                el.addEventListener("touchcancel", solta, { passive: false });
             }
-            
-            if (btnBuild) {
-                btnBuild.addEventListener("touchstart", (e) => { e.preventDefault(); simularCliqueMouse(2, "mousedown"); }); 
-                btnBuild.addEventListener("touchend", (e) => { e.preventDefault(); simularCliqueMouse(2, "mouseup"); });
+
+            // Botao de toque unico: aperta e solta (com um pequeno intervalo para o jogo registrar)
+            function botaoToque(id, tecla) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener("touchstart", (e) => {
+                    e.preventDefault();
+                    simularTecla(tecla, "keydown");
+                    setTimeout(() => simularTecla(tecla, "keyup"), 60);
+                }, { passive: false });
             }
+
+            botaoSegura("btn-up", K.W);
+            botaoSegura("btn-left", K.A);
+            botaoSegura("btn-down", K.S);
+            botaoSegura("btn-right", K.D);
+            botaoSegura("btn-jump", K.Space);
+            botaoSegura("btn-inv", K.B);
+            botaoSegura("btn-esc", K.Esc);
+            // TAB: segure para ver a lista de jogadores (multiplayer). No survival, o proprio Tab tambem atira flecha.
+            botaoSegura("btn-tab", K.Tab);
+            // FLECHA: um toque = uma flecha (o jogo atira flecha na tecla Tab)
+            botaoToque("btn-arrow", K.Tab);
+            // Extras
+            botaoToque("btn-fog", K.F);
+            botaoToque("btn-savepos", K.Enter);
+            botaoToque("btn-loadpos", K.R);
+
+            const btnMore = document.getElementById("btn-more");
+            const painel = document.getElementById("more-panel");
+            if (btnMore && painel) {
+                btnMore.addEventListener("touchstart", (e) => {
+                    e.preventDefault();
+                    const aberto = painel.classList.toggle("open");
+                    btnMore.classList.toggle("on", aberto);
+                }, { passive: false });
+            }
+
+            // QUEBRAR / BLOCO continuam funcionando como antes
+            const botaoMouse = (id, b) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener("touchstart", (e) => { e.preventDefault(); simularCliqueMouse(b, "mousedown"); }, { passive: false });
+                const fim = (e) => { e.preventDefault(); simularCliqueMouse(b, "mouseup"); };
+                el.addEventListener("touchend", fim, { passive: false });
+                el.addEventListener("touchcancel", fim, { passive: false });
+            };
+            botaoMouse("btn-attack", 0);
+            botaoMouse("btn-build", 2);
+
+            return { mouse: simularCliqueMouse, key: simularTecla };
         }
 
         window.addEventListener("load", () => { setTimeout(iniciarCheerpJ, 1000); });

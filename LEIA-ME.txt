@@ -35,3 +35,18 @@ MUSICA: pasta music/ (calm1-3.ogg do Alpha), tocada pelo navegador em intervalos
 SKIN: preview 3D (CSS) na pagina inicial, arraste para girar.
 SERVIDORES: lista salva no aparelho (nome, IP, porta, mppass). Os dados vao como parametros server/port/mppass/username do applet.
   Com servidor selecionado, o autosave do mundo local fica desligado. Navegadores nao abrem TCP comum: sem ponte de rede nao conecta.
+
+=== v22 (controles de toque) ===
+GESTOS NA TELA: tocar rapido = coloca bloco; tocar e SEGURAR (~0,28 s) = ataca/quebra (segura o botao esquerdo); arrastar = camera.
+  Segurar e depois arrastar continua quebrando enquanto vira a camera.
+BOTOES NOVOS: TAB (segure = lista de jogadores no multiplayer), FLECHA (um toque = uma flecha), MAIS (NEVOA=F, SALVAR POS=Enter, CARREGAR POS=R).
+TAB no jogo: a mesma tecla (Tab) mostra "Connected players" e, no survival com flechas, atira uma flecha.
+lwjgl.js: Tab/Enter/Backspace agora sao convertidos para o keysym X11 (antes o Tab nunca chegava ao jogo, nem no teclado do PC).
+
+=== v23 (otimizacao: travamentos apos ~1 minuto) ===
+CAUSA: em cheerpj-natives/natives-v22/lwjgl.js cada reconstrucao de lista de desenho (chunks/mobs) criava 3 buffers WebGL e
+nunca os liberava (glDeleteLists era um stub vazio e glNewList so liberava um dos dois tipos de lote). A GPU/memoria enchia
+ate cair para 0-1 fps. Corrigido: glNewList/glDeleteLists liberam buffers e VAOs, ids de lista sao reaproveitados.
+EXTRA: cada lote desenhado usa 1 VAO (1 bind + 1 draw em vez de ~12 chamadas GL); copia em memoria dos vertices e liberada apos
+subir para a GPU; envio imediato usa DYNAMIC_DRAW; removido o wrapper de diagnostico por chamada e o glGetError periodico.
+A pasta foi renomeada para natives-v22 para o navegador nao usar o lwjgl.js antigo em cache. Se ainda vier o antigo, Ctrl+F5.
