@@ -213,9 +213,22 @@
                                 </div>
                                 <small id="srvNote">Jogo solo: o mundo fica salvo neste aparelho. Servidores: navegadores n&atilde;o abrem conex&otilde;es TCP comuns, ent&atilde;o o servidor precisa ser acess&iacute;vel pela ponte do CheerpJ.</small>
 
+                                <h3>&gt; Servidor publico (proxy WebSocket)</h3>
+                                <div class="f"><span>URL do proxy</span><input type="text" id="wsProxy" autocapitalize="none" spellcheck="false" placeholder="ws://localhost:8080/?host={host}&amp;port={port}"></div>
+                                <small>Para servidores publicos: rode <b>proxy/mc-ws-proxy.js</b> no Termux (<code>node mc-ws-proxy.js 8080</code>) e deixe o padrao acima. {host} e {port} sao trocados pelo servidor escolhido. Proxy fora do aparelho precisa de wss://.</small>
+
+                                <h3>&gt; Rede / multiplayer (Tailscale, opcional)</h3>
+                                <label><input type="checkbox" id="tsOn"> Ativar rede Tailscale (precisa para entrar em servidores)</label>
+                                <div class="f"><span>Auth key (opcional)</span><input type="text" id="tsKey" autocapitalize="none" spellcheck="false" placeholder="tskey-auth-..."></div>
+                                <div class="f"><span>Control URL (opcional)</span><input type="text" id="tsCtl" autocapitalize="none" spellcheck="false" placeholder="so se voce hospeda o Headscale"></div>
+                                <div class="row"><button type="button" id="tsApply">Aplicar e recarregar</button></div>
+                                <a id="tsLogin" target="_blank" style="display:none">Toque aqui para entrar no Tailscale</a>
+                                <small>Sem login: ao recarregar aparece um link para entrar no Tailscale. O servidor precisa estar na sua tailnet (use o IP 100.x dele ou o nome MagicDNS) e a porta liberada. Servidores publicos comuns nao funcionam por navegador.</small>
+
                                 <h3>&gt; Mundo e som</h3>
                                 <label><input type="checkbox" id="autoSave"> Salvar o mundo automaticamente (pode travar o jogo por causa da escrita)</label>
                                 <label><input type="checkbox" id="freshWorld"> Come&ccedil;ar um mundo novo (apaga o mundo salvo)</label>
+                                <label><input type="checkbox" id="soundOn" checked> Som do jogo (desligue se travar)</label>
                                 <label><input type="checkbox" id="musicOn" checked> M&uacute;sica ambiente</label>
                                 <small>O mundo &eacute; salvo sozinho a cada ~45 s e volta quando voc&ecirc; abrir de novo neste aparelho/navegador.</small>
                             </div>
@@ -300,7 +313,7 @@
     (function () {
         const MAX = 1200, KEY = "mc_log_v1";
         const lines = [];
-        let prev = "";
+        let prev = "", lastTxt = "";
         try { prev = localStorage.getItem(KEY) || ""; } catch (e) {}
         const t0 = performance.now();
         function stamp() { return ((performance.now() - t0) / 1000).toFixed(1) + "s "; }
@@ -310,6 +323,7 @@
             catch (e) { txt = "[?]"; }
             txt = txt.replace(/\s+$/, "");
             if (!txt || /^\s*$/.test(txt)) return;
+            if (txt === lastTxt) return; lastTxt = txt;
             lines.push(stamp() + kind + " " + txt.slice(0, 600));
             if (lines.length > MAX) lines.shift();
             dirty = true;
@@ -325,7 +339,7 @@
         window.addEventListener("pagehide", () => { add("PAGE:", ["pagehide (pagina fechando)"]); save(); });
         document.addEventListener("fullscreenchange", () => add("PAGE:", ["fullscreen = " + !!document.fullscreenElement]));
         function save() { try { localStorage.setItem(KEY, lines.join("\n")); } catch (e) {} }
-        setInterval(() => { if (dirty) { dirty = false; save(); } }, 1000);
+        setInterval(() => { if (dirty) { dirty = false; save(); } }, 5000);
 
         window.addEventListener("DOMContentLoaded", () => {
             const btn = document.createElement("div");
@@ -395,9 +409,24 @@
                 setStatus("Configurando ambiente mobile...", 50);
                 // /app/ = raiz do servidor; usamos a pasta desta pagina para achar cheerpj-natives mesmo em subpastas
                 const baseDir = location.pathname.replace(/[^\/]*$/, "");
-                const nativesPath = "/app" + baseDir + "cheerpj-natives/natives-v22";
+                const nativesPath = "/app" + baseDir + "cheerpj-natives/natives-v24";
                 console.log("LWJGL natives em:", nativesPath + "/lwjgl.js");
-                await cheerpjInit({ javaProperties: ["java.library.path=" + nativesPath] }); // Java 8 (padrao) + LWJGL em JS
+                const initOpts = { javaProperties: ["java.library.path=" + nativesPath] };
+                // Multiplayer: o navegador nao abre TCP; o CheerpJ usa uma rede Tailscale (configurada em "Rede / multiplayer")
+                let tsOn = "0", tsKey = "", tsCtl = "";
+                try { tsOn = localStorage.getItem("mc_ts") || "0"; tsKey = localStorage.getItem("mc_ts_key") || ""; tsCtl = localStorage.getItem("mc_ts_ctl") || ""; } catch (e) {}
+                if (tsOn === "1") {
+                    if (tsCtl) initOpts.tailscaleControlUrl = tsCtl;
+                    if (tsKey) initOpts.tailscaleAuthKey = tsKey;
+                    else initOpts.tailscaleLoginUrlCb = function (url) {
+                        console.log("[tailscale] login necessario:", url);
+                        const a = document.getElementById("tsLogin");
+                        if (a) { a.href = url; a.style.display = "block"; }
+                    };
+                    initOpts.tailscaleIpCb = function (ip) { console.log("[tailscale] IP desta sessao:", ip); };
+                    console.log("[tailscale] rede ativada" + (tsKey ? " (auth key)" : " (login pelo link)"));
+                }
+                await cheerpjInit(initOpts); // Java 8 (padrao) + LWJGL em JS
                 setStatus("Ambiente pronto!", 100);
                 startButton.style.display = "inline-block";
             } catch (error) {
@@ -408,7 +437,7 @@
 
         // Verifica se os natives estao acessiveis e se o navegador tem WebGL2, ANTES de iniciar o Java
         async function checarAmbiente() {
-            const base = location.pathname.replace(/[^\/]*$/, "") + "cheerpj-natives/natives-v22/";
+            const base = location.pathname.replace(/[^\/]*$/, "") + "cheerpj-natives/natives-v24/";
             // WebGL2
             try {
                 const t = document.createElement("canvas");
@@ -425,7 +454,7 @@
                 catch (e) { throw new Error("Nao consegui baixar " + url + " (" + e.message + ")"); }
                 const txt = await r.text();
                 console.log("[checagem] " + f + " -> HTTP " + r.status + " tipo=" + r.headers.get("content-type") + " range=" + r.headers.get("content-range") + " inicio=" + JSON.stringify(txt.slice(0, 30)));
-                if (!r.ok) throw new Error(f + " nao encontrado (HTTP " + r.status + ") em " + url + ". Suba a pasta cheerpj-natives/natives-v22 inteira no repositorio.");
+                if (!r.ok) throw new Error(f + " nao encontrado (HTTP " + r.status + ") em " + url + ". Suba a pasta cheerpj-natives/natives-v24 inteira no repositorio.");
                 if (/^\s*</.test(txt)) throw new Error(f + " veio como pagina HTML (nao e JavaScript). O servidor esta bloqueando ou o arquivo nao existe: " + url);
                 if (f === "lwjgl.js" && r.status !== 206) throw new Error("O servidor nao suporta o cabecalho Range (HTTP " + r.status + "). O CheerpJ precisa disso. Use GitHub Pages, Netlify ou Cloudflare Pages.");
             }
@@ -615,6 +644,22 @@
 
         // ===== Musica ambiente (Alpha: calm1-3) =====
         const MUSICAS = ["music/calm1.ogg", "music/calm2.ogg", "music/calm3.ogg"];
+        (function () {
+            const g = (k) => { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } };
+            document.getElementById("tsOn").checked = g("mc_ts") === "1";
+            document.getElementById("tsKey").value = g("mc_ts_key");
+            document.getElementById("tsCtl").value = g("mc_ts_ctl");
+            const wp = document.getElementById("wsProxy"); wp.value = g("mc_wsproxy");
+            wp.addEventListener("change", () => { try { localStorage.setItem("mc_wsproxy", wp.value.trim()); } catch (e) {} });
+            document.getElementById("tsApply").addEventListener("click", () => {
+                try {
+                    localStorage.setItem("mc_ts", document.getElementById("tsOn").checked ? "1" : "0");
+                    localStorage.setItem("mc_ts_key", document.getElementById("tsKey").value.trim());
+                    localStorage.setItem("mc_ts_ctl", document.getElementById("tsCtl").value.trim());
+                } catch (e) {}
+                location.reload();
+            });
+        })();
         const musicOn = document.getElementById("musicOn");
         musicOn.checked = LS.get("mc_music", "1") === "1";
         musicOn.addEventListener("change", () => { LS.set("mc_music", musicOn.checked ? "1" : "0"); if (!musicOn.checked) pararMusica(); });
@@ -666,7 +711,7 @@
                 applet.setAttribute("code", modoSeguro ? "com.mojang.minecraft.MinecraftApplet" : "com.mojang.minecraft.MCApplet");
                 
                 // Usando caminhos estritamente relativos puros sem barra inicial para o CheerpJ 3.0 ler a pasta atual
-                applet.setAttribute("archive","minecraft-v23.jar,lwjgl.jar,lwjgl_util.jar,jinput.jar,lzma.jar");
+                applet.setAttribute("archive","minecraft-v24.jar,lwjgl.jar,lwjgl_util.jar,jinput.jar,lzma.jar");
                 applet.setAttribute("width", String(W));
                 applet.setAttribute("height", String(H));
 
@@ -677,12 +722,14 @@
                 const skinSalva = skinAtual();
                 if (skinSalva) adicionarParametro(applet, "skin", skinSalva);
                 if (document.getElementById("autoSave").checked) adicionarParametro(applet, "autosave", "1");
+                if (!document.getElementById("soundOn").checked) adicionarParametro(applet, "audio", "0");
                 if (document.getElementById("freshWorld").checked) adicionarParametro(applet, "fresh", "1");
                 const srv = servidorSelecionado();
                 if (srv) {
                     adicionarParametro(applet, "server", srv.host);
                     adicionarParametro(applet, "port", String(srv.port));
                     if (srv.pass) adicionarParametro(applet, "mppass", srv.pass);
+                    { let w = ""; try { w = localStorage.getItem("mc_wsproxy") || ""; } catch (e) {} adicionarParametro(applet, "wsproxy", w || "ws://localhost:8080/?host={host}&port={port}"); }
                 }
                 if (musicOn.checked) agendarMusica(40, 90);
 

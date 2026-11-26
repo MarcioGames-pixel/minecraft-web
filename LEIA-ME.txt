@@ -55,3 +55,26 @@ v23b: o autosave gravava o GZIP direto no arquivo (milhares de escritas pequenas
 depois de salvar. Agora serializa na memoria e grava de uma vez; intervalo de 45 s -> 120 s. Jar renomeado: minecraft-v23.jar.
 
 v23c: autosave agora vem DESLIGADO (a escrita no armazenamento do CheerpJ trava o jogo). Marque 'Salvar o mundo automaticamente' na tela inicial para ligar.
+
+
+=== v24 (travamentos depois de um tempo: telemetria + som desligavel) ===
+- Nova pasta cheerpj-natives/natives-v24 e minecraft-v24.jar (nomes novos para evitar cache). Ctrl+F5 se vier o antigo.
+- lwjgl.js agora escreve no LOG uma linha [perf] a cada 10 s: fps, frames lentos, maior frame, buffers/VAOs/texturas vivos, listas, heap JS.
+  Se buf/vao/tex ou heapJS so sobem ao longo do tempo = vazamento; se fps cai com os numeros estaveis = CPU/Java/som.
+- Opcao "Som do jogo" na tela inicial: desmarque para testar sem o mixer de audio (principal suspeito de travar).
+- Log: grava no maximo a cada 5 s e ignora linhas repetidas.
+- Dica: ESC > Opcoes > distancia de visao menor ajuda em celulares.
+
+v24 multiplayer:
+- Corrigido o UnsatisfiedLinkError (Java_sun_net_ExtendedOptionsImpl_init): o jogo chamava setTcpNoDelay/setTrafficClass/etc. no socket, que o CheerpJ
+  nao implementa. Essas chamadas foram removidas do com.mojang.a.a (minecraft-v24.jar).
+- Navegador nao abre TCP. Novo bloco "Rede / multiplayer": ative o Tailscale, (opcional) cole uma auth key, "Aplicar e recarregar".
+  Sem auth key, aparece um link para fazer login. O servidor Minecraft Classic precisa estar na SUA tailnet (IP 100.x ou nome MagicDNS).
+  Servidores publicos (IP comum da internet) nao sao alcancaveis assim. NAO TESTADO no CheerpJ real.
+
+v24 servidor publico (SEM Tailscale): o jogo agora fala com um proxy WebSocket->TCP.
+- No Termux: pkg install nodejs ; node proxy/mc-ws-proxy.js 8080   (so aceita conexoes do proprio aparelho)
+- No jogo: cadastre o servidor (IP, porta, mppass) normalmente. URL do proxy padrao: ws://localhost:8080/?host={host}&port={port}
+- SocketChannel/InetSocketAddress do cliente foram trocados por JsChannel/JsAddr (WebSocket via lwjgl.js). Testado: o bytecode verifica na JVM e o proxy
+  repassa dados em teste local; NAO testado no CheerpJ nem num servidor real. Servidores que exigem login pelo minecraft.net (mppass) nao funcionam mais
+  hoje: o minecraft.net antigo nao existe; so servidores sem verificacao ou com mppass fornecido por voce.
