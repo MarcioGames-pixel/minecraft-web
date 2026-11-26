@@ -52,8 +52,8 @@ public class MCApplet extends MinecraftApplet {
 			System.out.println("[mc] nao achei a instancia do jogo; salvar/sons desativados");
 			return;
 		}
-		final boolean multiplayer = getParameter("server") != null && getParameter("server").length() > 0;
-		if (multiplayer) System.out.println("[mc] multiplayer: autosave do mundo local desativado");
+		final boolean multiplayer = (getParameter("server") != null && getParameter("server").length() > 0) || !"1".equals(getParameter("autosave"));
+		if (multiplayer) System.out.println("[mc] autosave do mundo local desativado");
 		Thread t = new Thread(new Runnable() {
 			public void run() { helperLoop(mc, multiplayer); }
 		}, "mc-helpers");

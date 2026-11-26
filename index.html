@@ -214,6 +214,7 @@
                                 <small id="srvNote">Jogo solo: o mundo fica salvo neste aparelho. Servidores: navegadores n&atilde;o abrem conex&otilde;es TCP comuns, ent&atilde;o o servidor precisa ser acess&iacute;vel pela ponte do CheerpJ.</small>
 
                                 <h3>&gt; Mundo e som</h3>
+                                <label><input type="checkbox" id="autoSave"> Salvar o mundo automaticamente (pode travar o jogo por causa da escrita)</label>
                                 <label><input type="checkbox" id="freshWorld"> Come&ccedil;ar um mundo novo (apaga o mundo salvo)</label>
                                 <label><input type="checkbox" id="musicOn" checked> M&uacute;sica ambiente</label>
                                 <small>O mundo &eacute; salvo sozinho a cada ~45 s e volta quando voc&ecirc; abrir de novo neste aparelho/navegador.</small>
@@ -675,6 +676,7 @@
                 adicionarParametro(applet, "mobs", "true");
                 const skinSalva = skinAtual();
                 if (skinSalva) adicionarParametro(applet, "skin", skinSalva);
+                if (document.getElementById("autoSave").checked) adicionarParametro(applet, "autosave", "1");
                 if (document.getElementById("freshWorld").checked) adicionarParametro(applet, "fresh", "1");
                 const srv = servidorSelecionado();
                 if (srv) {
