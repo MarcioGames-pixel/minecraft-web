@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -9,147 +9,188 @@
     <script src="https://cjrtnc.leaningtech.com/5.0/loader.js"></script>
     
     <link rel="icon" type="image/png" href="assets/char.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="style.css">
 
-    <style>
-        :root {
-            --pixel: "Press Start 2P", "Courier New", monospace;
-            --mono: "VT323", "Courier New", monospace;
-            --stone: #7f7f7f; --stone-d: #373737; --stone-l: #c6c6c6;
-            --grass: #5fa13a; --dirt: #7a5230;
-        }
-        * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; width: 100%; height: 100%; font-family: Verdana, Geneva, Tahoma, sans-serif; color: #222;
-                     -webkit-user-select: none; user-select: none; }
-        body { overflow: hidden; background: #2b1d12; }
-        img, .pix { image-rendering: pixelated; image-rendering: crisp-edges; }
+<style>
+/* Classic Minecraft.net-inspired layout */
+* { box-sizing: border-box; }
+html, body {
+    margin: 0;
+    min-height: 100%;
+    background: #222 url("img/bg.gif") repeat;
+    color: #ddd;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 13px;
+}
+#startup { min-height: 100vh; }
+#startup .wrap {
+    width: 854px;
+    max-width: calc(100% - 24px);
+    margin: 0 auto;
+}
+#startup .topbar {
+    min-height: 48px;
+    background: #333 url("img/top-bg.gif") repeat-x;
+    border-bottom: 1px solid #111;
+    box-shadow: 0 1px 3px #000;
+}
+#startup .topbar .wrap {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    gap: 22px;
+}
+#startup .topbar a {
+    color: #eee;
+    font-weight: bold;
+    text-decoration: none;
+}
+#startup .topbar a:hover { color: #fff; text-decoration: underline; }
+#startup .spacer { flex: 1; }
+#startup .ver { color: #aaa; font-size: 11px; }
+#startup .hero {
+    padding: 20px 0 14px;
+    border-bottom: 1px solid #555;
+}
+#startup .logo {
+    color: #fff;
+    font-size: 38px;
+    font-weight: bold;
+    letter-spacing: -2px;
+    text-shadow: 2px 2px #000;
+}
+#startup .logo small {
+    margin-left: 8px;
+    color: #aaa;
+    font-size: 19px;
+    letter-spacing: 0;
+}
+#startup .splash {
+    display: block;
+    margin-top: 3px;
+    color: #8fce55;
+    font-size: 15px;
+    letter-spacing: 0;
+}
+#startup .ticker { display: none; }
+#startup .grid {
+    display: block;
+    margin-top: 18px;
+}
+#startup .grid > div { display: contents; }
+#startup .panel {
+    margin: 0 0 16px;
+    padding: 0;
+    background: #333;
+    border: 1px solid #555;
+    border-radius: 0;
+    box-shadow: 0 2px 4px #111;
+}
+#startup .panel h2 {
+    margin: 0;
+    padding: 9px 12px;
+    color: #fff;
+    background: #444;
+    border-bottom: 1px solid #666;
+    font-size: 16px;
+    font-weight: bold;
+}
+#startup .panel .body {
+    padding: 14px;
+    line-height: 1.5;
+}
+#startup .panel p { margin: 8px 0; }
+#startup .opts {
+    margin-top: 18px;
+    padding-top: 12px;
+    border-top: 1px solid #555;
+}
+#startup h3 {
+    margin: 16px 0 7px;
+    padding-bottom: 4px;
+    color: #9ccc68;
+    border-bottom: 1px solid #555;
+    font-size: 14px;
+}
+#startup input:not([type="checkbox"]):not([type="file"]),
+#startup select {
+    max-width: 100%;
+    min-height: 32px;
+    padding: 6px 8px;
+    color: #eee;
+    background: #222;
+    border: 1px solid #666;
+    border-radius: 0;
+}
+#startup input[type="file"] { max-width: 100%; color: #ddd; }
+#startup button {
+    min-height: 30px;
+    padding: 5px 12px;
+    color: #eee;
+    background: #555;
+    border: 1px solid #888;
+    border-radius: 2px;
+    cursor: pointer;
+}
+#startup button:hover { background: #666; }
+#startup button:disabled { opacity: .45; cursor: default; }
+#startup .mcbtn {
+    min-height: 42px;
+    padding: 8px 24px;
+    color: #fff;
+    background: #638b3d;
+    border: 1px solid #9bc76b;
+    font-size: 16px;
+    font-weight: bold;
+}
+#startup .row { display: flex; flex-wrap: wrap; gap: 7px; margin: 8px 0; }
+#startup .f { margin: 8px 0; }
+#startup .f span { display: block; margin-bottom: 4px; color: #bbb; }
+#startup label { display: block; margin: 8px 0; }
+#startup small { color: #aaa; line-height: 1.5; }
+#startup #status { margin: 8px 0; color: #ddd; }
+#startup #bar { height: 10px; background: #171717; border: 1px solid #555; }
+#startup #barInner { height: 100%; background: #79a94d; }
+#startup #time { margin: 4px 0 10px; color: #aaa; }
+#startup .hint {
+    margin-top: 14px;
+    padding: 9px;
+    color: #ddd;
+    background: #292929;
+    border: 1px solid #555;
+}
+#startup .steve { display: flex; align-items: center; gap: 14px; }
+#startup #skin3d { background: #252525; border: 1px solid #555; }
+#startup .footer {
+    margin: 24px auto 0;
+    padding: 16px 0 24px;
+    color: #999;
+    border-top: 1px solid #555;
+    text-align: center;
+    line-height: 1.8;
+}
+#startup .badge {
+    display: inline-block;
+    margin: 4px;
+    padding: 2px 6px;
+    color: #bbb;
+    background: #292929;
+    border: 1px solid #555;
+}
+#startup kbd {
+    padding: 2px 5px;
+    color: #eee;
+    background: #222;
+    border: 1px solid #777;
+}
+@media (max-width: 600px) {
+    #startup .topbar .wrap { gap: 12px; flex-wrap: wrap; }
+    #startup .logo { font-size: 30px; }
+    #startup .logo small { font-size: 15px; }
+    #startup .panel .body { padding: 10px; }
+}
+</style>
 
-        /* ===== Pagina inicial estilo 2009 ===== */
-        #startup { position: fixed; inset: 0; z-index: 9999; overflow-y: auto; overflow-x: hidden; touch-action: pan-y; -webkit-overflow-scrolling: touch;
-                   background-color: #3a2a1a;
-                   background-image: linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,.55)), url(assets/dirt.png);
-                   background-size: auto, 64px 64px; image-rendering: pixelated; }
-        .wrap { max-width: 920px; margin: 0 auto; padding: 0 12px; }
-
-        /* barra de navegacao de pedra */
-        .topbar { background: linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.35)), url(assets/rock.png); background-size: auto, 48px 48px;
-                  border-bottom: 4px solid #111; box-shadow: 0 4px 0 rgba(0,0,0,.4); position: sticky; top: 0; z-index: 5; }
-        .topbar .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding-top: 8px; padding-bottom: 8px; }
-        .topbar a { font-family: var(--pixel); font-size: 10px; color: #e8e8e8; text-decoration: none; text-shadow: 2px 2px 0 #222;
-                    padding: 9px 12px; border: 2px solid; border-color: #b5b5b5 #3a3a3a #3a3a3a #b5b5b5; background: #7c7c7c; }
-        .topbar a:hover, .topbar a:active { background: #8fa0d8; color: #fff; }
-        .topbar .spacer { flex: 1; }
-        .topbar .ver { font-family: var(--mono); font-size: 18px; color: #ddd; text-shadow: 2px 2px 0 #222; }
-
-        /* logo */
-        .hero { text-align: center; padding: 26px 0 14px; position: relative; }
-        .logo { display: inline-block; position: relative; font-family: var(--pixel); font-size: clamp(26px, 9.2vw, 68px); line-height: 1.1; letter-spacing: 2px;
-                color: #c9c9c9; text-transform: uppercase;
-                text-shadow: 1px 1px 0 #fff3, 3px 3px 0 #6b6b6b, 5px 5px 0 #4a4a4a, 7px 7px 0 #2c2c2c, 9px 9px 0 #151515, 11px 11px 12px #0008; }
-        .logo small { display: block; font-size: .32em; letter-spacing: 6px; color: #9fd36a; margin-top: 10px;
-                      text-shadow: 2px 2px 0 #2d4a14, 4px 4px 0 #111; }
-        .splash { position: absolute; right: -6px; bottom: -14px; font-family: var(--pixel); font-size: clamp(9px, 2.6vw, 15px); color: #ff0;
-                  text-shadow: 2px 2px 0 #3f3f00; transform: rotate(-16deg); white-space: nowrap; animation: pulse 0.6s ease-in-out infinite alternate; pointer-events: none; }
-        @keyframes pulse { from { transform: rotate(-16deg) scale(1); } to { transform: rotate(-16deg) scale(1.12); } }
-
-        /* faixa de letreiro */
-        .ticker { overflow: hidden; white-space: nowrap; background: #000; border-top: 3px solid var(--grass); border-bottom: 3px solid #111; }
-        .ticker span { display: inline-block; padding-left: 100%; font-family: var(--mono); font-size: 22px; color: #9f9; animation: scroll 28s linear infinite; }
-        @keyframes scroll { to { transform: translateX(-100%); } }
-
-        /* layout */
-        .grid { display: grid; grid-template-columns: 1fr 270px; gap: 16px; margin: 18px 0; align-items: start; }
-        @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } .splash { right: 4px; } }
-
-        /* paineis */
-        .panel { background: var(--stone-l); border: 3px solid; border-color: #fff #5a5a5a #5a5a5a #fff; outline: 3px solid #000; margin-bottom: 18px;
-                 box-shadow: 7px 7px 0 rgba(0,0,0,.45); }
-        .panel h2 { margin: 0; padding: 12px 12px 10px; font-family: var(--pixel); font-size: 12px; font-weight: normal; color: #fff;
-                    text-shadow: 2px 2px 0 #222; letter-spacing: 1px; border-top: 8px solid var(--grass); border-bottom: 3px solid #2a1c10;
-                    background: var(--dirt) url(assets/dirt.png); background-size: 32px 32px; image-rendering: pixelated; }
-        .panel .body { padding: 14px 16px; font-size: 13px; line-height: 1.55; }
-        .panel p { margin: 0 0 10px; }
-        .panel ul { margin: 0; padding-left: 18px; }
-        .panel li { margin-bottom: 5px; }
-        .panel a { color: #1a4fb0; }
-        kbd { font-family: var(--pixel); font-size: 9px; padding: 3px 5px; background: #8a8a8a; color: #fff; border: 2px solid; border-color: #d0d0d0 #3a3a3a #3a3a3a #d0d0d0; text-shadow: 1px 1px 0 #222; }
-
-        /* painel de jogar */
-        #status { font-family: var(--mono); font-size: 26px; line-height: 1.1; color: #111; min-height: 30px; margin-bottom: 8px; }
-        #time { font-family: var(--mono); font-size: 20px; color: #555; margin-top: 6px; }
-        #bar { height: 18px; background: #5b4331; border: 3px solid; border-color: #2a1c10 #8a6d52 #8a6d52 #2a1c10; overflow: hidden; }
-        #barInner { width: 0%; height: 100%; background: linear-gradient(#7bc14a, #5d9732); transition: width .3s; }
-        .mcbtn { display: inline-block; font-family: var(--pixel); font-size: 13px; color: #e8e8e8; text-shadow: 2px 2px 0 #3a3a3a; cursor: pointer;
-                 padding: 15px 22px; background: #707070; border: 3px solid; border-color: #c8c8c8 #2f2f2f #2f2f2f #c8c8c8; outline: 3px solid #000; }
-        .mcbtn:hover:not(:disabled), .mcbtn:active:not(:disabled) { background: #7f93d8; color: #ffffa0; }
-        .mcbtn:disabled { background: #555; color: #999; cursor: default; }
-        #startButton { display: none; margin-top: 18px; width: 100%; max-width: 360px; }
-        #error { display: none; margin-top: 18px; padding: 10px; background: #3a1010; border: 3px solid #a33; color: #ffb0b0; text-align: left;
-                 font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; user-select: text; -webkit-user-select: text; }
-        .hint { margin-top: 16px; padding: 8px 10px; background: #fff7c2; border: 2px dashed #a58f1c; font-size: 12px; }
-
-        /* cartao do jogador */
-        .steve { display: flex; gap: 12px; align-items: center; }
-        .head { width: 64px; height: 64px; flex: none; border: 3px solid #000; background: url(assets/char.png) -64px -64px / 512px 256px no-repeat; image-rendering: pixelated; }
-        .head2 { position: absolute; }
-        .steve b { font-family: var(--mono); font-size: 24px; }
-
-        .footer { margin: 8px 0 40px; padding: 14px; text-align: center; font-size: 11px; color: #ddd; text-shadow: 1px 1px 0 #000;
-                  background: rgba(0,0,0,.6); border-top: 4px solid var(--grass); }
-        .badge { display: inline-block; margin: 6px 3px 0; padding: 3px 8px; font-family: var(--pixel); font-size: 8px; color: #fff; background: #444; border: 2px solid; border-color: #aaa #222 #222 #aaa; }
-
-        /* ===== Area do jogo e controles ===== */
-        #game-container { display: none; width: 100vw; height: 100vh; position: relative; background: #000; touch-action: none; }
-        #game { width: 100%; height: 100%; }
-        canvas, cheerpj-applet { display: block; width: 100% !important; height: 100% !important; }
-
-        #controls-overlay { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
-        .btn-mobile, .dpad-btn { position: absolute; pointer-events: auto; background: rgba(120,120,120,.45); border: 3px solid; border-color: rgba(255,255,255,.7) rgba(0,0,0,.6) rgba(0,0,0,.6) rgba(255,255,255,.7);
-                                 border-radius: 0; color: #fff; font-family: var(--pixel); font-size: 10px; text-shadow: 2px 2px 0 #222;
-                                 display: flex; align-items: center; justify-content: center; text-align: center; touch-action: none; -webkit-tap-highlight-color: transparent; }
-        .btn-mobile:active, .dpad-btn:active { background: rgba(143,160,216,.7); }
-        #dpad { position: absolute; bottom: 30px; left: 30px; width: 150px; height: 150px; pointer-events: none; }
-        .dpad-btn { width: 45px; height: 45px; font-size: 14px; }
-        #btn-up    { top: 0; left: 52px; }
-        #btn-left  { top: 52px; left: 0; }
-        #btn-right { top: 52px; right: 0; }
-        #btn-down  { bottom: 0; left: 52px; }
-        #btn-jump   { bottom: 50px; right: 40px; width: 65px; height: 65px; }
-        #btn-attack { bottom: 130px; right: 120px; width: 62px; height: 62px; }
-        #btn-build  { bottom: 50px; right: 130px; width: 62px; height: 62px; }
-        #btn-esc   { top: 15px; left: 20px; width: 56px; height: 36px; }
-        #btn-inv   { top: 15px; right: 20px; width: 56px; height: 36px; }
-        #btn-arrow { bottom: 130px; right: 40px; width: 62px; height: 62px; }
-        #btn-tab   { top: 15px; right: 86px; width: 56px; height: 36px; }
-        #btn-more  { top: 15px; right: 152px; width: 56px; height: 36px; }
-        #more-panel { position: absolute; top: 58px; right: 20px; display: none; flex-direction: column; gap: 6px; pointer-events: none; }
-        #more-panel.open { display: flex; }
-        #more-panel .btn-mobile { position: static; width: 150px; height: 34px; pointer-events: auto; }
-        .btn-mobile.on { background: rgba(143,160,216,.7); }
-
-        /* ===== Opcoes: skin / mundo / servidores ===== */
-        .opts { margin-top: 16px; max-width: 380px; font-size: 13px; line-height: 1.5; }
-        .opts h3 { font-family: var(--pixel); font-size: 10px; margin: 16px 0 8px; }
-        .opts h3:first-child { margin-top: 0; }
-        .opts label { display: block; margin: 6px 0; cursor: pointer; }
-        .opts .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0; }
-        .opts input[type=text], .opts input[type=number], .opts select { font: inherit; font-size: 13px; padding: 6px 8px; width: 100%; box-sizing: border-box; background: #fff; color: #111; border: 2px solid #555; }
-        .opts button { font: inherit; font-size: 12px; padding: 6px 10px; cursor: pointer; }
-        .opts small { opacity: .75; display: block; margin-top: 4px; }
-        #srvForm { display: none; margin-top: 8px; padding: 10px; background: rgba(0,0,0,.35); border: 2px solid #555; }
-        #srvForm .f { margin: 6px 0; }
-        #srvForm .f span { display: block; font-size: 11px; opacity: .8; }
-        #srvForm .two { display: grid; grid-template-columns: 1fr 90px; gap: 8px; }
-        /* preview 3D da skin (CSS 3D) */
-        #skin3d { position: relative; width: 100%; height: 230px; margin: 8px 0; perspective: 700px; background: linear-gradient(#6f9bd8, #9ec1ea 60%, #5a8a3a 60%); border: 2px solid #555; touch-action: none; cursor: grab; overflow: hidden; }
-        #skin3d.drag { cursor: grabbing; }
-        #skin3d .stage { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-style: preserve-3d; }
-        #skin3d .part { position: absolute; left: 0; top: 0; transform-style: preserve-3d; }
-        /* a regra global 'canvas {width:100% !important}' do jogo nao pode valer aqui */
-        #skin3d canvas { position: absolute; image-rendering: pixelated; backface-visibility: hidden; width: auto !important; height: auto !important; max-width: none !important; }
-    </style>
 </head>
 <body>
 
@@ -157,9 +198,9 @@
     <div id="startup">
         <div class="topbar">
             <div class="wrap">
-                <a href="#jogar">Jogar</a>
-                <a href="#controles">Controles</a>
-                <a href="#sobre">Sobre</a>
+                <a href="#jogar">Play</a>
+                <a href="#controles">Controls</a>
+                <a href="#sobre">About</a>
                 <span class="spacer"></span>
                 <span class="ver">v0.30</span>
             </div>
@@ -167,113 +208,113 @@
 
         <div class="wrap">
             <div class="hero">
-                <div class="logo">Minecraft<small>Classic</small><span class="splash">Survival Test!</span></div>
+                <div class="logo"><img src="img/logo_small.gif" alt="Minecraft" width="270" height="50"><span class="splash">Survival Test!</span></div>
             </div>
         </div>
 
-        <div class="ticker"><span>&#9632; Bem-vindo ao Minecraft Classic! &#9632; Construa, escave e sobreviva direto no navegador &#9632; Nenhuma instalação necessária &#9632; Gire o celular para o modo paisagem antes de jogar &#9632;</span></div>
+        <div class="ticker"><span>&#9632; Welcome to Minecraft Classic! &#9632; Build, dig and survive right in your browser &#9632; No installation required &#9632; Rotate your device to landscape before playing &#9632;</span></div>
 
         <div class="wrap">
             <div class="grid">
                 <div>
                     <div class="panel" id="jogar">
-                        <h2>&gt; Jogar agora</h2>
+                        <h2>&gt; Play now</h2>
                         <div class="body">
-                            <div id="status">Iniciando interpretador Java...</div>
+                            <div id="status">Starting Java runtime...</div>
                             <div id="bar"><div id="barInner"></div></div>
                             <div id="time">0.0s</div>
-                            <button id="startButton" class="mcbtn">Iniciar Minecraft</button>
+                            <button id="startButton" class="mcbtn">Start Minecraft</button>
                             <div class="opts">
-                                <h3>&gt; Jogador</h3>
-                                <input type="text" id="playerName" maxlength="16" placeholder="Seu nome (A-Z, 0-9, _)" autocomplete="off" spellcheck="false">
+                                <h3>&gt; Player</h3>
+                                <input type="text" id="playerName" maxlength="16" placeholder="Your name (A-Z, 0-9, _)" autocomplete="off" spellcheck="false">
 
                                 <h3>&gt; Skin</h3>
                                 <div id="skin3d" title="Arraste para girar"><div class="stage" id="skinStage"></div></div>
                                 <div class="row">
                                     <input type="file" id="skinFile" accept="image/png">
-                                    <button type="button" id="skinClear" style="display:none">Skin padr&atilde;o</button>
+                                    <button type="button" id="skinClear" style="display:none">Default skin</button>
                                 </div>
-                                <small>PNG do Minecraft Classic (64&times;32; se for 64&times;64, usa a metade de cima). Fica salva neste aparelho.</small>
+                                <small>Minecraft Classic PNG (64×32; for 64×64 images, the top half is used). Saved on this device.</small>
 
-                                <h3>&gt; Servidor</h3>
+                                <h3>&gt; Server</h3>
                                 <select id="serverSel"></select>
                                 <div class="row">
-                                    <button type="button" id="srvNew">Novo</button>
-                                    <button type="button" id="srvEdit">Editar</button>
-                                    <button type="button" id="srvDel">Apagar</button>
-                                    <button type="button" id="srvPreset">+ Lista Classic</button>
+                                    <button type="button" id="srvNew">New</button>
+                                    <button type="button" id="srvEdit">Edit</button>
+                                    <button type="button" id="srvDel">Delete</button>
+                                    <button type="button" id="srvPreset">+ Classic server list</button>
                                 </div>
                                 <div id="srvForm">
-                                    <div class="f"><span>Nome do servidor</span><input type="text" id="srvName" maxlength="40" placeholder="Meu servidor"></div>
+                                    <div class="f"><span>Server name</span><input type="text" id="srvName" maxlength="40" placeholder="My server"></div>
                                     <div class="f two">
-                                        <div><span>IP ou endere&ccedil;o</span><input type="text" id="srvHost" placeholder="exemplo.com ou 192.168.0.10" autocapitalize="none" spellcheck="false"></div>
-                                        <div><span>Porta</span><input type="number" id="srvPort" value="25565" min="1" max="65535"></div>
+                                        <div><span>IP address or hostname</span><input type="text" id="srvHost" placeholder="exemplo.com ou 192.168.0.10" autocapitalize="none" spellcheck="false"></div>
+                                        <div><span>Port</span><input type="number" id="srvPort" value="25565" min="1" max="65535"></div>
                                     </div>
-                                    <div class="f"><span>mppass (opcional)</span><input type="text" id="srvPass" maxlength="64" autocapitalize="none" spellcheck="false"></div>
-                                    <div class="row"><button type="button" id="srvSave">Salvar</button><button type="button" id="srvCancel">Cancelar</button></div>
+                                    <div class="f"><span>mppass (optional)</span><input type="text" id="srvPass" maxlength="64" autocapitalize="none" spellcheck="false"></div>
+                                    <div class="row"><button type="button" id="srvSave">Save</button><button type="button" id="srvCancel">Cancel</button></div>
                                 </div>
-                                <small id="srvNote">Jogo solo: o mundo fica salvo neste aparelho. Servidores: navegadores n&atilde;o abrem conex&otilde;es TCP comuns, ent&atilde;o o servidor precisa ser acess&iacute;vel pela ponte do CheerpJ.</small>
+                                <small id="srvNote">Single-player: the world is saved on this device. Browsers cannot open regular TCP connections, so servers must be accessible through the CheerpJ bridge.</small>
 
-                                <h3>&gt; Servidor publico (proxy WebSocket)</h3>
-                                <div class="f"><span>URL do proxy</span><input type="text" id="wsProxy" autocapitalize="none" spellcheck="false" placeholder="ws://localhost:8080/?host={host}&amp;port={port}"></div>
-                                <small>Para servidores publicos: rode <b>proxy/mc-ws-proxy.js</b> no Termux (<code>node mc-ws-proxy.js 8080</code>) e deixe o padrao acima. {host} e {port} sao trocados pelo servidor escolhido. Proxy fora do aparelho precisa de wss://.</small>
+                                <h3>&gt; Server publico (proxy WebSocket)</h3>
+                                <div class="f"><span>Proxy URL</span><input type="text" id="wsProxy" autocapitalize="none" spellcheck="false" placeholder="ws://localhost:8080/?host={host}&amp;port={port}"></div>
+                                <small>For public servers: run <b>proxy/mc-ws-proxy.js</b> no Termux (<code>node mc-ws-proxy.js 8080</code>) e deixe o padrao acima. {host} e {port} sao trocados pelo servidor escolhido. A proxy hosted outside this device requires wss://.</small>
 
-                                <h3>&gt; Rede / multiplayer (Tailscale, opcional)</h3>
-                                <label><input type="checkbox" id="tsOn"> Ativar rede Tailscale (precisa para entrar em servidores)</label>
-                                <div class="f"><span>Auth key (opcional)</span><input type="text" id="tsKey" autocapitalize="none" spellcheck="false" placeholder="tskey-auth-..."></div>
-                                <div class="f"><span>Control URL (opcional)</span><input type="text" id="tsCtl" autocapitalize="none" spellcheck="false" placeholder="so se voce hospeda o Headscale"></div>
-                                <div class="row"><button type="button" id="tsApply">Aplicar e recarregar</button></div>
-                                <a id="tsLogin" target="_blank" style="display:none">Toque aqui para entrar no Tailscale</a>
-                                <small>Sem login: ao recarregar aparece um link para entrar no Tailscale. O servidor precisa estar na sua tailnet (use o IP 100.x dele ou o nome MagicDNS) e a porta liberada. Servidores publicos comuns nao funcionam por navegador.</small>
+                                <h3>&gt; Network / multiplayer (Tailscale, optional)</h3>
+                                <label><input type="checkbox" id="tsOn"> Enable Tailscale network (required to join servers)</label>
+                                <div class="f"><span>Auth key (optional)</span><input type="text" id="tsKey" autocapitalize="none" spellcheck="false" placeholder="tskey-auth-..."></div>
+                                <div class="f"><span>Control URL (optional)</span><input type="text" id="tsCtl" autocapitalize="none" spellcheck="false" placeholder="so se voce hospeda o Headscale"></div>
+                                <div class="row"><button type="button" id="tsApply">Apply and reload</button></div>
+                                <a id="tsLogin" target="_blank" style="display:none">Click here to sign in to Tailscale</a>
+                                <small>Without a login key, a sign-in link appears after reloading. The server must be on your tailnet (use its 100.x IP or MagicDNS name) with the port open. Regular public servers cannot be reached directly through the browser.</small>
 
-                                <h3>&gt; Mundo e som</h3>
-                                <label><input type="checkbox" id="autoSave"> Salvar o mundo automaticamente (pode travar o jogo por causa da escrita)</label>
-                                <label><input type="checkbox" id="freshWorld"> Come&ccedil;ar um mundo novo (apaga o mundo salvo)</label>
-                                <label><input type="checkbox" id="soundOn" checked> Som do jogo (desligue se travar)</label>
-                                <label><input type="checkbox" id="musicOn" checked> M&uacute;sica ambiente</label>
-                                <small>O mundo &eacute; salvo sozinho a cada ~45 s e volta quando voc&ecirc; abrir de novo neste aparelho/navegador.</small>
+                                <h3>&gt; World and sound</h3>
+                                <label><input type="checkbox" id="autoSave"> Automatically save the world (saving may temporarily freeze the game)</label>
+                                <label><input type="checkbox" id="freshWorld"> Start a new world (deletes the saved world)</label>
+                                <label><input type="checkbox" id="soundOn" checked> Game sound (turn off if the game freezes)</label>
+                                <label><input type="checkbox" id="musicOn" checked> Background music</label>
+                                <small>The world is automatically saved about every 45 seconds and restored when you reopen it on this device/browser.</small>
                             </div>
                             <div id="error"></div>
-                            <div class="hint">&#9888; <b>Dica:</b> o primeiro carregamento é demorado, e gerar o mapa pode levar até 1 ou 2 minutos no celular. Jogue com o aparelho deitado (paisagem).</div>
+                            <div class="hint">&#9888; <b>Tip:</b> The first load takes a while, and generating the world may take 1–2 minutes on a phone. Play with your device in landscape mode.</div>
                         </div>
                     </div>
 
                     <div class="panel" id="sobre">
-                        <h2>&gt; Sobre</h2>
+                        <h2>&gt; About</h2>
                         <div class="body">
-                            <p>Esta é uma versão do <b>Minecraft Classic (Survival Test 0.30)</b> que roda no navegador, usando <b>CheerpJ</b> para executar o Java e uma camada de LWJGL feita em JavaScript e WebGL.</p>
-                            <p>O mapa é gerado toda vez que você entra, então o progresso não é salvo. Ainda <b>não há som</b>.</p>
+                            <p>This is a browser version of <b>Minecraft Classic (Survival Test 0.30)</b>, using <b>CheerpJ</b> to run Java and a JavaScript/WebGL LWJGL layer.</p>
+                            <p>The map is generated each time you enter, so progress is not saved. <b>Sound is not fully supported yet</b>.</p>
                         </div>
                     </div>
                 </div>
 
                 <div>
                     <div class="panel">
-                        <h2>&gt; Jogador</h2>
+                        <h2>&gt; Player</h2>
                         <div class="body">
-                            <div class="steve"><div class="head pix"></div><div><b>Steve</b><br>Modo: Sobrevivência</div></div>
+                            <div class="steve"><div class="head pix"></div><div><b>Steve</b><br>Mode: Survival</div></div>
                         </div>
                     </div>
 
                     <div class="panel" id="controles">
-                        <h2>&gt; Controles</h2>
+                        <h2>&gt; Controls</h2>
                         <div class="body">
                             <ul>
-                                <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> mover</li>
-                                <li><kbd>ESPAÇO</kbd> pular</li>
-                                <li><kbd>B</kbd> escolher bloco</li>
+                                <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</li>
+                                <li><kbd>ESPAÇO</kbd> jump</li>
+                                <li><kbd>B</kbd> select block</li>
                                 <li><kbd>ESC</kbd> menu</li>
-                                <li>Mouse esq./dir.: quebrar / colocar</li>
+                                <li>Left/right mouse: break / place</li>
                             </ul>
-                            <p style="margin-top:10px"><b>No celular:</b> arraste o dedo na tela para olhar ao redor e use os botões na tela.</p>
+                            <p style="margin-top:10px"><b>On mobile:</b> drag your finger across the screen to look around and use the on-screen buttons.</p>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div class="footer">
-                Minecraft &copy; Mojang AB. Esta página é um projeto de fã, sem ligação com a Mojang ou a Microsoft.<br>
-                <span class="badge">CheerpJ</span><span class="badge">WebGL</span><span class="badge">Java 8</span><span class="badge">Melhor em 1024&times;768 :)</span>
+                Minecraft &copy; Mojang AB. This is a fan project and is not affiliated with Mojang or Microsoft.<br>
+                <span class="badge">CheerpJ</span><span class="badge">WebGL</span><span class="badge">Java 8</span><span class="badge">Best viewed at 1024×768 :)</span>
             </div>
         </div>
     </div>
@@ -291,20 +332,20 @@
                 <div id="btn-down" class="dpad-btn">&#9660;</div>
             </div>
 
-            <div id="btn-jump" class="btn-mobile">PULO</div>
-            <div id="btn-attack" class="btn-mobile">QUEBRAR</div>
-            <div id="btn-build" class="btn-mobile">BLOCO</div>
+            <div id="btn-jump" class="btn-mobile">JUMP</div>
+            <div id="btn-attack" class="btn-mobile">BREAK</div>
+            <div id="btn-build" class="btn-mobile">PLACE</div>
 
-            <div id="btn-arrow" class="btn-mobile">FLECHA</div>
+            <div id="btn-arrow" class="btn-mobile">ARROW</div>
 
             <div id="btn-esc" class="btn-mobile">ESC</div>
             <div id="btn-inv" class="btn-mobile">INV</div>
             <div id="btn-tab" class="btn-mobile">TAB</div>
-            <div id="btn-more" class="btn-mobile">MAIS</div>
+            <div id="btn-more" class="btn-mobile">MORE</div>
             <div id="more-panel">
-                <div id="btn-fog" class="btn-mobile">NEVOA (F)</div>
-                <div id="btn-savepos" class="btn-mobile">SALVAR POS</div>
-                <div id="btn-loadpos" class="btn-mobile">CARREGAR POS</div>
+                <div id="btn-fog" class="btn-mobile">FOG (F)</div>
+                <div id="btn-savepos" class="btn-mobile">SAVE POS</div>
+                <div id="btn-loadpos" class="btn-mobile">LOAD POS</div>
             </div>
         </div>
     </div>
@@ -394,7 +435,7 @@
         }
 
         function showError(error) {
-            status.textContent = "Erro na Execucao";
+            status.textContent = "Runtime error";
             bar.style.width = "0%";
             errorBox.style.display = "block";
             errorBox.textContent = String(error && error.stack ? error.stack : error);
@@ -405,9 +446,9 @@
         async function iniciarCheerpJ() {
             try {
                 if (typeof cheerpjInit !== "function") {
-                    throw new Error("A funcao cheerpjInit() nao foi encontrada no script oficial.");
+                    throw new Error("The cheerpjInit() function was not found in the official script.");
                 }
-                setStatus("Configurando ambiente mobile...", 50);
+                setStatus("Configuring mobile environment...", 50);
                 // /app/ = raiz do servidor; usamos a pasta desta pagina para achar cheerpj-natives mesmo em subpastas
                 const baseDir = location.pathname.replace(/[^\/]*$/, "");
                 const nativesPath = "/app" + baseDir + "cheerpj-natives/natives-v27";
@@ -428,7 +469,7 @@
                     console.log("[tailscale] rede ativada" + (tsKey ? " (auth key)" : " (login pelo link)"));
                 }
                 await cheerpjInit(initOpts); // Java 8 (padrao) + LWJGL em JS
-                setStatus("Ambiente pronto!", 100);
+                setStatus("Environment ready!", 100);
                 startButton.style.display = "inline-block";
             } catch (error) {
                 showError(error);
@@ -443,7 +484,7 @@
             try {
                 const t = document.createElement("canvas");
                 const gl = t.getContext("webgl2");
-                if (!gl) throw new Error("WebGL2 indisponivel");
+                if (!gl) throw new Error("WebGL2 is unavailable");
                 const ext = gl.getExtension("WEBGL_lose_context"); if (ext) ext.loseContext();
                 console.log("[checagem] WebGL2 ok");
             } catch (e) { throw new Error("Seu navegador/aparelho nao abriu WebGL2: " + e.message); }
@@ -587,7 +628,7 @@
                 LS.set(SKIN_KEY, cv.toDataURL("image/png"));
                 carregarSkinNoModelo();
             };
-            img.onerror = () => alert("Esse arquivo nao parece uma imagem PNG valida.");
+            img.onerror = () => alert("This file does not appear to be a valid PNG image.");
             img.src = URL.createObjectURL(f);
         });
         document.getElementById("skinClear").addEventListener("click", () => {
@@ -604,7 +645,7 @@
         function salvarServidores() { LS.set(SRV_KEY, JSON.stringify(servidores)); }
         function preencherServidores(selecionar) {
             serverSel.innerHTML = "";
-            const solo = new Option("Jogo solo (sem servidor)", "solo"); serverSel.add(solo);
+            const solo = new Option("Single-player (no server)", "solo"); serverSel.add(solo);
             for (const s of servidores) serverSel.add(new Option(`${s.name}  (${s.host}:${s.port})`, s.id));
             serverSel.value = selecionar && [...serverSel.options].some(o => o.value === selecionar) ? selecionar : "solo";
             LS.set(SRV_SEL, serverSel.value);
@@ -649,8 +690,8 @@
             const host = document.getElementById("srvHost").value.trim();
             const port = parseInt(document.getElementById("srvPort").value, 10);
             let name = document.getElementById("srvName").value.trim() || host;
-            if (!/^[A-Za-z0-9._\-:\[\]]{1,253}$/.test(host)) { alert("Informe um IP ou endereco valido."); return; }
-            if (!(port >= 1 && port <= 65535)) { alert("A porta deve estar entre 1 e 65535."); return; }
+            if (!/^[A-Za-z0-9._\-:\[\]]{1,253}$/.test(host)) { alert("Enter a valid IP address or hostname."); return; }
+            if (!(port >= 1 && port <= 65535)) { alert("Port must be between 1 and 65535."); return; }
             const pass = document.getElementById("srvPass").value.trim();
             let s = servidores.find(x => x.id === editandoId);
             if (!s) { s = { id: "s" + Date.now().toString(36) }; servidores.push(s); }
@@ -709,13 +750,13 @@
                 } catch (e) { /* alguns navegadores nao permitem; seguimos */ }
                 await new Promise(r => setTimeout(r, 400));
                 if (window.innerHeight > window.innerWidth) {
-                    setStatus("Gire o celular para PAISAGEM e toque em Iniciar de novo", 100);
+                    setStatus("Rotate your device to LANDSCAPE and tap Start again", 100);
                     return;
                 }
                 startButton.disabled = true;
-                setStatus("Verificando arquivos...", 100);
+                setStatus("Checking files...", 100);
                 await checarAmbiente();
-                setStatus("Construindo janela grafica...", 100);
+                setStatus("Creating graphics window...", 100);
                 gameZone.innerHTML = "";
 
                 // Canvas onde o LWJGL (cheerpj-natives) desenha o OpenGL — precisa existir ANTES do applet iniciar
@@ -920,7 +961,7 @@
             botaoSegura("btn-esc", K.Esc);
             // TAB: segure para ver a lista de jogadores (multiplayer). No survival, o proprio Tab tambem atira flecha.
             botaoSegura("btn-tab", K.Tab);
-            // FLECHA: um toque = uma flecha (o jogo atira flecha na tecla Tab)
+            // ARROW: um toque = uma flecha (o jogo atira flecha na tecla Tab)
             botaoToque("btn-arrow", K.Tab);
             // Extras
             botaoToque("btn-fog", K.F);
@@ -937,7 +978,7 @@
                 }, { passive: false });
             }
 
-            // QUEBRAR / BLOCO continuam funcionando como antes
+            // BREAK / PLACE continuam funcionando como antes
             const botaoMouse = (id, b) => {
                 const el = document.getElementById(id);
                 if (!el) return;
@@ -955,5 +996,33 @@
         window.addEventListener("load", () => { setTimeout(iniciarCheerpJ, 1000); });
         startButton.addEventListener("click", iniciarMinecraft);
     </script>
+
+<script>
+(function () {
+  var ua = navigator.userAgent || "";
+  var platform = navigator.userAgentData
+    ? navigator.userAgentData.platform
+    : navigator.platform || "";
+
+  var isWindows = /Windows/i.test(ua) || /Win/i.test(platform);
+  var isDesktop = matchMedia("(hover: hover) and (pointer: fine)").matches;
+
+  if (isWindows && isDesktop) {
+    document.documentElement.classList.add("windows-desktop");
+  }
+
+  var game = document.getElementById("game-container");
+  if (!game) return;
+
+  game.addEventListener("dblclick", function () {
+    if (!document.fullscreenElement && game.requestFullscreen) {
+      game.requestFullscreen().catch(function (err) {
+        console.warn("Não foi possível entrar em fullscreen:", err);
+      });
+    }
+  });
+})();
+</script>
+
 </body>
 </html>
