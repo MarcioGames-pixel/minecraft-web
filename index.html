@@ -201,6 +201,7 @@
                                     <button type="button" id="srvNew">Novo</button>
                                     <button type="button" id="srvEdit">Editar</button>
                                     <button type="button" id="srvDel">Apagar</button>
+                                    <button type="button" id="srvPreset">+ Lista Classic</button>
                                 </div>
                                 <div id="srvForm">
                                     <div class="f"><span>Nome do servidor</span><input type="text" id="srvName" maxlength="40" placeholder="Meu servidor"></div>
@@ -627,6 +628,22 @@
             const s = servidorSelecionado();
             if (!s || !confirm(`Apagar o servidor "${s.name}"?`)) return;
             servidores = servidores.filter(x => x.id !== s.id); salvarServidores(); preencherServidores("solo");
+        });
+        document.getElementById("srvPreset").addEventListener("click", () => {
+            // servidores c0.30 da lista do Betacraft; "online" = exige mppass valido (login do minecraft.net, que nao existe mais)
+            const lista = [
+                ["Anarquia Classica de Lenni", "lenni0451.net", 39999], ["A Grande Provincia", "province.krazeetobi.org", 25565],
+                ["AlwaysClassic", "alwaysalpha.xyz", 25564], ["ClassicHaven (online)", "15.204.223.25", 25565],
+                ["Omniarchive Classic (online)", "5.161.125.110", 25566], ["Minesweeper Classic (online)", "binoclard.net", 25565],
+                ["Good old Lava Survival (online)", "145.239.86.249", 25589], ["Not Awesome 2 (online)", "162.245.188.76", 25556],
+                ["Supernova Online (online)", "81net.duckdns.org", 25566]];
+            let n = 0;
+            for (const [name, host, port] of lista) {
+                if (servidores.some(x => x.host === host && x.port === port)) continue;
+                servidores.push({ id: "p" + Date.now().toString(36) + n++, name, host, port, pass: "" });
+            }
+            salvarServidores(); preencherServidores(serverSel.value);
+            alert(n + " servidor(es) adicionado(s). Os marcados (online) provavelmente exigem mppass.");
         });
         document.getElementById("srvSave").addEventListener("click", () => {
             const host = document.getElementById("srvHost").value.trim();
