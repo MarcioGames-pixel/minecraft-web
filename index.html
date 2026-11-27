@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Minecraft Classic - Survival Test 0.30</title>
+    
+    <!-- CheerpJ 5.0 (suporta applets + LWJGL/OpenGL via WebAssembly) -->
+    <script src="https://cjrtnc.leaningtech.com/5.0/loader.js"></script>
+    
+    <link rel="icon" type="image/png" href="assets/char.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --pixel: "Press Start 2P", "Courier New", monospace;
+            --mono: "VT323", "Courier New", monospace;
+            --stone: #7f7f7f; --stone-d: #373737; --stone-l: #c6c6c6;
+            --grass: #5fa13a; --dirt: #7a5230;
+        }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; font-family: Verdana, Geneva, Tahoma, sans-serif; color: #222;
+                     -webkit-user-select: none; user-select: none; }
+        body { overflow: hidden; background: #2b1d12; }
+        img, .pix { image-rendering: pixelated; image-rendering: crisp-edges; }
+
+        /* ===== Pagina inicial estilo 2009 ===== */
+        #startup { position: fixed; inset: 0; z-index: 9999; overflow-y: auto; overflow-x: hidden; touch-action: pan-y; -webkit-overflow-scrolling: touch;
+                   background-color: #3a2a1a;
+                   background-image: linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,.55)), url(assets/dirt.png);
+                   background-size: auto, 64px 64px; image-rendering: pixelated; }
+        .wrap { max-width: 920px; margin: 0 auto; padding: 0 12px; }
+
+        /* barra de navegacao de pedra */
+        .topbar { background: linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.35)), url(assets/rock.png); background-size: auto, 48px 48px;
+                  border-bottom: 4px solid #111; box-shadow: 0 4px 0 rgba(0,0,0,.4); position: sticky; top: 0; z-index: 5; }
+        .topbar .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding-top: 8px; padding-bottom: 8px; }
+        .topbar a { font-family: var(--pixel); font-size: 10px; color: #e8e8e8; text-decoration: none; text-shadow: 2px 2px 0 #222;
+                    padding: 9px 12px; border: 2px solid; border-color: #b5b5b5 #3a3a3a #3a3a3a #b5b5b5; background: #7c7c7c; }
+        .topbar a:hover, .topbar a:active { background: #8fa0d8; color: #fff; }
+        .topbar .spacer { flex: 1; }
+        .topbar .ver { font-family: var(--mono); font-size: 18px; color: #ddd; text-shadow: 2px 2px 0 #222; }
+
+        /* logo */
+        .hero { text-align: center; padding: 26px 0 14px; position: relative; }
+        .logo { display: inline-block; position: relative; font-family: var(--pixel); font-size: clamp(26px, 9.2vw, 68px); line-height: 1.1; letter-spacing: 2px;
+                color: #c9c9c9; text-transform: uppercase;
+                text-shadow: 1px 1px 0 #fff3, 3px 3px 0 #6b6b6b, 5px 5px 0 #4a4a4a, 7px 7px 0 #2c2c2c, 9px 9px 0 #151515, 11px 11px 12px #0008; }
+        .logo small { display: block; font-size: .32em; letter-spacing: 6px; color: #9fd36a; margin-top: 10px;
+                      text-shadow: 2px 2px 0 #2d4a14, 4px 4px 0 #111; }
+        .splash { position: absolute; right: -6px; bottom: -14px; font-family: var(--pixel); font-size: clamp(9px, 2.6vw, 15px); color: #ff0;
+                  text-shadow: 2px 2px 0 #3f3f00; transform: rotate(-16deg); white-space: nowrap; animation: pulse 0.6s ease-in-out infinite alternate; pointer-events: none; }
+        @keyframes pulse { from { transform: rotate(-16deg) scale(1); } to { transform: rotate(-16deg) scale(1.12); } }
+
+        /* faixa de letreiro */
+        .ticker { overflow: hidden; white-space: nowrap; background: #000; border-top: 3px solid var(--grass); border-bottom: 3px solid #111; }
+        .ticker span { display: inline-block; padding-left: 100%; font-family: var(--mono); font-size: 22px; color: #9f9; animation: scroll 28s linear infinite; }
+        @keyframes scroll { to { transform: translateX(-100%); } }
+
+        /* layout */
+        .grid { display: grid; grid-template-columns: 1fr 270px; gap: 16px; margin: 18px 0; align-items: start; }
+        @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } .splash { right: 4px; } }
+
+        /* paineis */
+        .panel { background: var(--stone-l); border: 3px solid; border-color: #fff #5a5a5a #5a5a5a #fff; outline: 3px solid #000; margin-bottom: 18px;
+                 box-shadow: 7px 7px 0 rgba(0,0,0,.45); }
+        .panel h2 { margin: 0; padding: 12px 12px 10px; font-family: var(--pixel); font-size: 12px; font-weight: normal; color: #fff;
+                    text-shadow: 2px 2px 0 #222; letter-spacing: 1px; border-top: 8px solid var(--grass); border-bottom: 3px solid #2a1c10;
+                    background: var(--dirt) url(assets/dirt.png); background-size: 32px 32px; image-rendering: pixelated; }
+        .panel .body { padding: 14px 16px; font-size: 13px; line-height: 1.55; }
+        .panel p { margin: 0 0 10px; }
+        .panel ul { margin: 0; padding-left: 18px; }
+        .panel li { margin-bottom: 5px; }
+        .panel a { color: #1a4fb0; }
+        kbd { font-family: var(--pixel); font-size: 9px; padding: 3px 5px; background: #8a8a8a; color: #fff; border: 2px solid; border-color: #d0d0d0 #3a3a3a #3a3a3a #d0d0d0; text-shadow: 1px 1px 0 #222; }
+
+        /* painel de jogar */
+        #status { font-family: var(--mono); font-size: 26px; line-height: 1.1; color: #111; min-height: 30px; margin-bottom: 8px; }
+        #time { font-family: var(--mono); font-size: 20px; color: #555; margin-top: 6px; }
+        #bar { height: 18px; background: #5b4331; border: 3px solid; border-color: #2a1c10 #8a6d52 #8a6d52 #2a1c10; overflow: hidden; }
+        #barInner { width: 0%; height: 100%; background: linear-gradient(#7bc14a, #5d9732); transition: width .3s; }
+        .mcbtn { display: inline-block; font-family: var(--pixel); font-size: 13px; color: #e8e8e8; text-shadow: 2px 2px 0 #3a3a3a; cursor: pointer;
+                 padding: 15px 22px; background: #707070; border: 3px solid; border-color: #c8c8c8 #2f2f2f #2f2f2f #c8c8c8; outline: 3px solid #000; }
+        .mcbtn:hover:not(:disabled), .mcbtn:active:not(:disabled) { background: #7f93d8; color: #ffffa0; }
+        .mcbtn:disabled { background: #555; color: #999; cursor: default; }
+        #startButton { display: none; margin-top: 18px; width: 100%; max-width: 360px; }
+        #error { display: none; margin-top: 18px; padding: 10px; background: #3a1010; border: 3px solid #a33; color: #ffb0b0; text-align: left;
+                 font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; user-select: text; -webkit-user-select: text; }
+        .hint { margin-top: 16px; padding: 8px 10px; background: #fff7c2; border: 2px dashed #a58f1c; font-size: 12px; }
+
+        /* cartao do jogador */
+        .steve { display: flex; gap: 12px; align-items: center; }
+        .head { width: 64px; height: 64px; flex: none; border: 3px solid #000; background: url(assets/char.png) -64px -64px / 512px 256px no-repeat; image-rendering: pixelated; }
+        .head2 { position: absolute; }
+        .steve b { font-family: var(--mono); font-size: 24px; }
+
+        .footer { margin: 8px 0 40px; padding: 14px; text-align: center; font-size: 11px; color: #ddd; text-shadow: 1px 1px 0 #000;
+                  background: rgba(0,0,0,.6); border-top: 4px solid var(--grass); }
+        .badge { display: inline-block; margin: 6px 3px 0; padding: 3px 8px; font-family: var(--pixel); font-size: 8px; color: #fff; background: #444; border: 2px solid; border-color: #aaa #222 #222 #aaa; }
+
+        /* ===== Area do jogo e controles ===== */
+        #game-container { display: none; width: 100vw; height: 100vh; position: relative; background: #000; touch-action: none; }
+        #game { width: 100%; height: 100%; }
+        canvas, cheerpj-applet { display: block; width: 100% !important; height: 100% !important; }
+
+        #controls-overlay { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
+        .btn-mobile, .dpad-btn { position: absolute; pointer-events: auto; background: rgba(120,120,120,.45); border: 3px solid; border-color: rgba(255,255,255,.7) rgba(0,0,0,.6) rgba(0,0,0,.6) rgba(255,255,255,.7);
+                                 border-radius: 0; color: #fff; font-family: var(--pixel); font-size: 10px; text-shadow: 2px 2px 0 #222;
+                                 display: flex; align-items: center; justify-content: center; text-align: center; touch-action: none; -webkit-tap-highlight-color: transparent; }
+        .btn-mobile:active, .dpad-btn:active { background: rgba(143,160,216,.7); }
+        #dpad { position: absolute; bottom: 30px; left: 30px; width: 150px; height: 150px; pointer-events: none; }
+        .dpad-btn { width: 45px; height: 45px; font-size: 14px; }
+        #btn-up    { top: 0; left: 52px; }
+        #btn-left  { top: 52px; left: 0; }
+        #btn-right { top: 52px; right: 0; }
+        #btn-down  { bottom: 0; left: 52px; }
+        #btn-jump   { bottom: 50px; right: 40px; width: 65px; height: 65px; }
+        #btn-attack { bottom: 130px; right: 120px; width: 62px; height: 62px; }
+        #btn-build  { bottom: 50px; right: 130px; width: 62px; height: 62px; }
+        #btn-esc   { top: 15px; left: 20px; width: 56px; height: 36px; }
+        #btn-inv   { top: 15px; right: 20px; width: 56px; height: 36px; }
+        #btn-arrow { bottom: 130px; right: 40px; width: 62px; height: 62px; }
+        #btn-tab   { top: 15px; right: 86px; width: 56px; height: 36px; }
+        #btn-more  { top: 15px; right: 152px; width: 56px; height: 36px; }
+        #more-panel { position: absolute; top: 58px; right: 20px; display: none; flex-direction: column; gap: 6px; pointer-events: none; }
+        #more-panel.open { display: flex; }
+        #more-panel .btn-mobile { position: static; width: 150px; height: 34px; pointer-events: auto; }
+        .btn-mobile.on { background: rgba(143,160,216,.7); }
+
+        /* ===== Opcoes: skin / mundo / servidores ===== */
+        .opts { margin-top: 16px; max-width: 380px; font-size: 13px; line-height: 1.5; }
+        .opts h3 { font-family: var(--pixel); font-size: 10px; margin: 16px 0 8px; }
+        .opts h3:first-child { margin-top: 0; }
+        .opts label { display: block; margin: 6px 0; cursor: pointer; }
+        .opts .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0; }
+        .opts input[type=text], .opts input[type=number], .opts select { font: inherit; font-size: 13px; padding: 6px 8px; width: 100%; box-sizing: border-box; background: #fff; color: #111; border: 2px solid #555; }
+        .opts button { font: inherit; font-size: 12px; padding: 6px 10px; cursor: pointer; }
+        .opts small { opacity: .75; display: block; margin-top: 4px; }
+        #srvForm { display: none; margin-top: 8px; padding: 10px; background: rgba(0,0,0,.35); border: 2px solid #555; }
+        #srvForm .f { margin: 6px 0; }
+        #srvForm .f span { display: block; font-size: 11px; opacity: .8; }
+        #srvForm .two { display: grid; grid-template-columns: 1fr 90px; gap: 8px; }
+        /* preview 3D da skin (CSS 3D) */
+        #skin3d { position: relative; width: 100%; height: 230px; margin: 8px 0; perspective: 700px; background: linear-gradient(#6f9bd8, #9ec1ea 60%, #5a8a3a 60%); border: 2px solid #555; touch-action: none; cursor: grab; overflow: hidden; }
+        #skin3d.drag { cursor: grabbing; }
+        #skin3d .stage { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-style: preserve-3d; }
+        #skin3d .part { position: absolute; left: 0; top: 0; transform-style: preserve-3d; }
+        /* a regra global 'canvas {width:100% !important}' do jogo nao pode valer aqui */
+        #skin3d canvas { position: absolute; image-rendering: pixelated; backface-visibility: hidden; width: auto !important; height: auto !important; max-width: none !important; }
+    </style>
+</head>
+<body>
+
+    <!-- ===== Pagina inicial ===== -->
+    <div id="startup">
+        <div class="topbar">
+            <div class="wrap">
+                <a href="#jogar">Jogar</a>
+                <a href="#controles">Controles</a>
+                <a href="#sobre">Sobre</a>
+                <span class="spacer"></span>
+                <span class="ver">v0.30</span>
+            </div>
+        </div>
+
+        <div class="wrap">
+            <div class="hero">
+                <div class="logo">Minecraft<small>Classic</small><span class="splash">Survival Test!</span></div>
+            </div>
+        </div>
+
+        <div class="ticker"><span>&#9632; Bem-vindo ao Minecraft Classic! &#9632; Construa, escave e sobreviva direto no navegador &#9632; Nenhuma instalação necessária &#9632; Gire o celular para o modo paisagem antes de jogar &#9632;</span></div>
+
+        <div class="wrap">
+            <div class="grid">
+                <div>
+                    <div class="panel" id="jogar">
+                        <h2>&gt; Jogar agora</h2>
+                        <div class="body">
+                            <div id="status">Iniciando interpretador Java...</div>
+                            <div id="bar"><div id="barInner"></div></div>
+                            <div id="time">0.0s</div>
+                            <button id="startButton" class="mcbtn">Iniciar Minecraft</button>
+                            <div class="opts">
+                                <h3>&gt; Jogador</h3>
+                                <input type="text" id="playerName" maxlength="16" placeholder="Seu nome (A-Z, 0-9, _)" autocomplete="off" spellcheck="false">
+
+                                <h3>&gt; Skin</h3>
+                                <div id="skin3d" title="Arraste para girar"><div class="stage" id="skinStage"></div></div>
+                                <div class="row">
+                                    <input type="file" id="skinFile" accept="image/png">
+                                    <button type="button" id="skinClear" style="display:none">Skin padr&atilde;o</button>
+                                </div>
+                                <small>PNG do Minecraft Classic (64&times;32; se for 64&times;64, usa a metade de cima). Fica salva neste aparelho.</small>
+
+                                <h3>&gt; Servidor</h3>
+                                <select id="serverSel"></select>
+                                <div class="row">
+                                    <button type="button" id="srvNew">Novo</button>
+                                    <button type="button" id="srvEdit">Editar</button>
+                                    <button type="button" id="srvDel">Apagar</button>
+                                    <button type="button" id="srvPreset">+ Lista Classic</button>
+                                </div>
+                                <div id="srvForm">
+                                    <div class="f"><span>Nome do servidor</span><input type="text" id="srvName" maxlength="40" placeholder="Meu servidor"></div>
+                                    <div class="f two">
+                                        <div><span>IP ou endere&ccedil;o</span><input type="text" id="srvHost" placeholder="exemplo.com ou 192.168.0.10" autocapitalize="none" spellcheck="false"></div>
+                                        <div><span>Porta</span><input type="number" id="srvPort" value="25565" min="1" max="65535"></div>
+                                    </div>
+                                    <div class="f"><span>mppass (opcional)</span><input type="text" id="srvPass" maxlength="64" autocapitalize="none" spellcheck="false"></div>
+                                    <div class="row"><button type="button" id="srvSave">Salvar</button><button type="button" id="srvCancel">Cancelar</button></div>
+                                </div>
+                                <small id="srvNote">Jogo solo: o mundo fica salvo neste aparelho. Servidores: navegadores n&atilde;o abrem conex&otilde;es TCP comuns, ent&atilde;o o servidor precisa ser acess&iacute;vel pela ponte do CheerpJ.</small>
+
+                                <h3>&gt; Servidor publico (proxy WebSocket)</h3>
+                                <div class="f"><span>URL do proxy</span><input type="text" id="wsProxy" autocapitalize="none" spellcheck="false" placeholder="ws://localhost:8080/?host={host}&amp;port={port}"></div>
+                                <small>Para servidores publicos: rode <b>proxy/mc-ws-proxy.js</b> no Termux (<code>node mc-ws-proxy.js 8080</code>) e deixe o padrao acima. {host} e {port} sao trocados pelo servidor escolhido. Proxy fora do aparelho precisa de wss://.</small>
+
+                                <h3>&gt; Rede / multiplayer (Tailscale, opcional)</h3>
+                                <label><input type="checkbox" id="tsOn"> Ativar rede Tailscale (precisa para entrar em servidores)</label>
+                                <div class="f"><span>Auth key (opcional)</span><input type="text" id="tsKey" autocapitalize="none" spellcheck="false" placeholder="tskey-auth-..."></div>
+                                <div class="f"><span>Control URL (opcional)</span><input type="text" id="tsCtl" autocapitalize="none" spellcheck="false" placeholder="so se voce hospeda o Headscale"></div>
+                                <div class="row"><button type="button" id="tsApply">Aplicar e recarregar</button></div>
+                                <a id="tsLogin" target="_blank" style="display:none">Toque aqui para entrar no Tailscale</a>
+                                <small>Sem login: ao recarregar aparece um link para entrar no Tailscale. O servidor precisa estar na sua tailnet (use o IP 100.x dele ou o nome MagicDNS) e a porta liberada. Servidores publicos comuns nao funcionam por navegador.</small>
+
+                                <h3>&gt; Mundo e som</h3>
+                                <label><input type="checkbox" id="autoSave"> Salvar o mundo automaticamente (pode travar o jogo por causa da escrita)</label>
+                                <label><input type="checkbox" id="freshWorld"> Come&ccedil;ar um mundo novo (apaga o mundo salvo)</label>
+                                <label><input type="checkbox" id="soundOn" checked> Som do jogo (desligue se travar)</label>
+                                <label><input type="checkbox" id="musicOn" checked> M&uacute;sica ambiente</label>
+                                <small>O mundo &eacute; salvo sozinho a cada ~45 s e volta quando voc&ecirc; abrir de novo neste aparelho/navegador.</small>
+                            </div>
+                            <div id="error"></div>
+                            <div class="hint">&#9888; <b>Dica:</b> o primeiro carregamento é demorado, e gerar o mapa pode levar até 1 ou 2 minutos no celular. Jogue com o aparelho deitado (paisagem).</div>
+                        </div>
+                    </div>
+
+                    <div class="panel" id="sobre">
+                        <h2>&gt; Sobre</h2>
+                        <div class="body">
+                            <p>Esta é uma versão do <b>Minecraft Classic (Survival Test 0.30)</b> que roda no navegador, usando <b>CheerpJ</b> para executar o Java e uma camada de LWJGL feita em JavaScript e WebGL.</p>
+                            <p>O mapa é gerado toda vez que você entra, então o progresso não é salvo. Ainda <b>não há som</b>.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="panel">
+                        <h2>&gt; Jogador</h2>
+                        <div class="body">
+                            <div class="steve"><div class="head pix"></div><div><b>Steve</b><br>Modo: Sobrevivência</div></div>
+                        </div>
+                    </div>
+
+                    <div class="panel" id="controles">
+                        <h2>&gt; Controles</h2>
+                        <div class="body">
+                            <ul>
+                                <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> mover</li>
+                                <li><kbd>ESPAÇO</kbd> pular</li>
+                                <li><kbd>B</kbd> escolher bloco</li>
+                                <li><kbd>ESC</kbd> menu</li>
+                                <li>Mouse esq./dir.: quebrar / colocar</li>
+                            </ul>
+                            <p style="margin-top:10px"><b>No celular:</b> arraste o dedo na tela para olhar ao redor e use os botões na tela.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer">
+                Minecraft &copy; Mojang AB. Esta página é um projeto de fã, sem ligação com a Mojang ou a Microsoft.<br>
+                <span class="badge">CheerpJ</span><span class="badge">WebGL</span><span class="badge">Java 8</span><span class="badge">Melhor em 1024&times;768 :)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interface Ativa do Jogo -->
+    <div id="game-container">
+        <div id="game"></div>
+        <canvas id="lwjgl" tabindex="0" style="position:absolute;inset:0;z-index:5;outline:none;"></canvas>
+
+        <div id="controls-overlay">
+            <div id="dpad">
+                <div id="btn-up" class="dpad-btn">&#9650;</div>
+                <div id="btn-left" class="dpad-btn">&#9664;</div>
+                <div id="btn-right" class="dpad-btn">&#9654;</div>
+                <div id="btn-down" class="dpad-btn">&#9660;</div>
+            </div>
+
+            <div id="btn-jump" class="btn-mobile">PULO</div>
+            <div id="btn-attack" class="btn-mobile">QUEBRAR</div>
+            <div id="btn-build" class="btn-mobile">BLOCO</div>
+
+            <div id="btn-arrow" class="btn-mobile">FLECHA</div>
+
+            <div id="btn-esc" class="btn-mobile">ESC</div>
+            <div id="btn-inv" class="btn-mobile">INV</div>
+            <div id="btn-tab" class="btn-mobile">TAB</div>
+            <div id="btn-more" class="btn-mobile">MAIS</div>
+            <div id="more-panel">
+                <div id="btn-fog" class="btn-mobile">NEVOA (F)</div>
+                <div id="btn-savepos" class="btn-mobile">SALVAR POS</div>
+                <div id="btn-loadpos" class="btn-mobile">CARREGAR POS</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ===== Console embutido (para depurar no celular) =====
+    (function () {
+        const MAX = 1200, KEY = "mc_log_v1";
+        const lines = [];
+        let prev = "", lastTxt = "";
+        try { prev = localStorage.getItem(KEY) || ""; } catch (e) {}
+        const t0 = performance.now();
+        function stamp() { return ((performance.now() - t0) / 1000).toFixed(1) + "s "; }
+        function add(kind, args) {
+            let txt;
+            try { txt = Array.from(args).map(a => (a && a.stack) ? a.stack : (typeof a === "object" ? JSON.stringify(a) : String(a))).join(" "); }
+            catch (e) { txt = "[?]"; }
+            txt = txt.replace(/\s+$/, "");
+            if (!txt || /^\s*$/.test(txt)) return;
+            if (txt === lastTxt) return; lastTxt = txt;
+            lines.push(stamp() + kind + " " + txt.slice(0, 600));
+            if (lines.length > MAX) lines.shift();
+            dirty = true;
+        }
+        let dirty = false;
+        for (const k of ["log", "info", "warn", "error"]) {
+            const orig = console[k].bind(console);
+            console[k] = function () { add(k === "log" || k === "info" ? "" : k.toUpperCase() + ":", arguments); orig.apply(null, arguments); };
+        }
+        window.addEventListener("error", e => add("ERRO JS:", [e.message + " @" + e.lineno]));
+        window.addEventListener("unhandledrejection", e => add("PROMISE:", [e.reason]));
+        document.addEventListener("visibilitychange", () => add("PAGE:", ["visibilidade = " + document.visibilityState]));
+        window.addEventListener("pagehide", () => { add("PAGE:", ["pagehide (pagina fechando)"]); save(); });
+        document.addEventListener("fullscreenchange", () => add("PAGE:", ["fullscreen = " + !!document.fullscreenElement]));
+        function save() { try { localStorage.setItem(KEY, lines.join("\n")); } catch (e) {} }
+        setInterval(() => { if (dirty) { dirty = false; save(); } }, 5000);
+
+        window.addEventListener("DOMContentLoaded", () => {
+            const btn = document.createElement("div");
+            btn.textContent = "LOG";
+            btn.style.cssText = "position:fixed;top:4px;left:50%;transform:translateX(-50%);z-index:100000;padding:6px 14px;background:#000a;color:#0f0;border:1px solid #0f0;border-radius:6px;font:bold 12px monospace;user-select:none;touch-action:manipulation";
+            const panel = document.createElement("div");
+            panel.style.cssText = "position:fixed;inset:0;z-index:100001;display:none;flex-direction:column;background:#000e;color:#ddd;font:11px monospace;touch-action:pan-y";
+            const bar = document.createElement("div");
+            bar.style.cssText = "display:flex;gap:8px;padding:8px;background:#111";
+            const mk = (t, f) => { const b = document.createElement("button"); b.textContent = t; b.style.cssText = "padding:8px 12px;font:bold 12px monospace"; b.onclick = f; bar.appendChild(b); return b; };
+            const pre = document.createElement("pre");
+            pre.style.cssText = "flex:1;margin:0;padding:8px;overflow:auto;white-space:pre-wrap;word-break:break-all;user-select:text;-webkit-user-select:text;touch-action:pan-y";
+            let showPrev = false;
+            function render() {
+                pre.textContent = showPrev ? (prev || "(sem log anterior)") : lines.join("\n");
+                pre.scrollTop = pre.scrollHeight;
+            }
+            mk("Fechar", () => { panel.style.display = "none"; });
+            mk("Copiar", async () => {
+                try { await navigator.clipboard.writeText(pre.textContent); add("PAGE:", ["log copiado"]); }
+                catch (e) { const r = document.createRange(); r.selectNodeContents(pre); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+            });
+            const bPrev = mk("Sessao anterior", () => { showPrev = !showPrev; bPrev.textContent = showPrev ? "Sessao atual" : "Sessao anterior"; render(); });
+            mk("Atualizar", render);
+            panel.appendChild(bar); panel.appendChild(pre);
+            btn.addEventListener("click", () => { showPrev = false; bPrev.textContent = "Sessao anterior"; render(); panel.style.display = "flex"; });
+            btn.addEventListener("touchstart", e => e.stopPropagation(), { passive: true });
+            document.body.appendChild(btn); document.body.appendChild(panel);
+        });
+    })();
+    </script>
+    <script>
+        "use strict";
+
+        const startup = document.getElementById("startup");
+        const status = document.getElementById("status");
+        const timeElement = document.getElementById("time");
+        const bar = document.getElementById("barInner");
+        const startButton = document.getElementById("startButton");
+        const errorBox = document.getElementById("error");
+        const gameContainer = document.getElementById("game-container");
+        const gameZone = document.getElementById("game");
+
+        const startTime = performance.now();
+        function elapsed() { return ((performance.now() - startTime) / 1000).toFixed(1); }
+        setInterval(() => { timeElement.textContent = elapsed() + "s"; }, 250);
+
+        function setStatus(text, progress) {
+            status.textContent = text;
+            if (progress !== undefined) bar.style.width = progress + "%";
+        }
+
+        function showError(error) {
+            status.textContent = "Erro na Execucao";
+            bar.style.width = "0%";
+            errorBox.style.display = "block";
+            errorBox.textContent = String(error && error.stack ? error.stack : error);
+        }
+
+        window.addEventListener("error", (e) => showError(new Error(`JS: ${e.message}\nLinha: ${e.lineno}`)));
+
+        async function iniciarCheerpJ() {
+            try {
+                if (typeof cheerpjInit !== "function") {
+                    throw new Error("A funcao cheerpjInit() nao foi encontrada no script oficial.");
+                }
+                setStatus("Configurando ambiente mobile...", 50);
+                // /app/ = raiz do servidor; usamos a pasta desta pagina para achar cheerpj-natives mesmo em subpastas
+                const baseDir = location.pathname.replace(/[^\/]*$/, "");
+                const nativesPath = "/app" + baseDir + "cheerpj-natives/natives-v25";
+                console.log("LWJGL natives em:", nativesPath + "/lwjgl.js");
+                const initOpts = { javaProperties: ["java.library.path=" + nativesPath] };
+                // Multiplayer: o navegador nao abre TCP; o CheerpJ usa uma rede Tailscale (configurada em "Rede / multiplayer")
+                let tsOn = "0", tsKey = "", tsCtl = "";
+                try { tsOn = localStorage.getItem("mc_ts") || "0"; tsKey = localStorage.getItem("mc_ts_key") || ""; tsCtl = localStorage.getItem("mc_ts_ctl") || ""; } catch (e) {}
+                if (tsOn === "1") {
+                    if (tsCtl) initOpts.tailscaleControlUrl = tsCtl;
+                    if (tsKey) initOpts.tailscaleAuthKey = tsKey;
+                    else initOpts.tailscaleLoginUrlCb = function (url) {
+                        console.log("[tailscale] login necessario:", url);
+                        const a = document.getElementById("tsLogin");
+                        if (a) { a.href = url; a.style.display = "block"; }
+                    };
+                    initOpts.tailscaleIpCb = function (ip) { console.log("[tailscale] IP desta sessao:", ip); };
+                    console.log("[tailscale] rede ativada" + (tsKey ? " (auth key)" : " (login pelo link)"));
+                }
+                await cheerpjInit(initOpts); // Java 8 (padrao) + LWJGL em JS
+                setStatus("Ambiente pronto!", 100);
+                startButton.style.display = "inline-block";
+            } catch (error) {
+                showError(error);
+            }
+        }
+
+
+        // Verifica se os natives estao acessiveis e se o navegador tem WebGL2, ANTES de iniciar o Java
+        async function checarAmbiente() {
+            const base = location.pathname.replace(/[^\/]*$/, "") + "cheerpj-natives/natives-v25/";
+            // WebGL2
+            try {
+                const t = document.createElement("canvas");
+                const gl = t.getContext("webgl2");
+                if (!gl) throw new Error("WebGL2 indisponivel");
+                const ext = gl.getExtension("WEBGL_lose_context"); if (ext) ext.loseContext();
+                console.log("[checagem] WebGL2 ok");
+            } catch (e) { throw new Error("Seu navegador/aparelho nao abriu WebGL2: " + e.message); }
+            // arquivos nativos
+            for (const f of ["lwjgl.js", "jinput-linux64.js", "jawt.js"]) {
+                const url = base + f;
+                let r;
+                try { r = await fetch(url, { headers: { Range: "bytes=0-63" }, cache: "no-store" }); }
+                catch (e) { throw new Error("Nao consegui baixar " + url + " (" + e.message + ")"); }
+                const txt = await r.text();
+                console.log("[checagem] " + f + " -> HTTP " + r.status + " tipo=" + r.headers.get("content-type") + " range=" + r.headers.get("content-range") + " inicio=" + JSON.stringify(txt.slice(0, 30)));
+                if (!r.ok) throw new Error(f + " nao encontrado (HTTP " + r.status + ") em " + url + ". Suba a pasta cheerpj-natives/natives-v25 inteira no repositorio.");
+                if (/^\s*</.test(txt)) throw new Error(f + " veio como pagina HTML (nao e JavaScript). O servidor esta bloqueando ou o arquivo nao existe: " + url);
+                if (f === "lwjgl.js" && r.status !== 206) throw new Error("O servidor nao suporta o cabecalho Range (HTTP " + r.status + "). O CheerpJ precisa disso. Use GitHub Pages, Netlify ou Cloudflare Pages.");
+            }
+            console.log("[checagem] ambiente OK");
+        }
+
+        // WebAudio precisa ser criado/liberado dentro de um toque do usuario
+        function liberarAudio() {
+            try {
+                if (!window.mcAudioCtx) {
+                    const AC = window.AudioContext || window.webkitAudioContext;
+                    if (AC) window.mcAudioCtx = new AC();
+                }
+                if (window.mcAudioCtx && window.mcAudioCtx.state === "suspended") window.mcAudioCtx.resume();
+            } catch (e) { console.warn("audio:", e); }
+        }
+        ["touchstart", "mousedown", "keydown"].forEach(ev => document.addEventListener(ev, liberarAudio, { passive: true }));
+
+        // ===== Preferencias (guardadas no aparelho) =====
+        const LS = {
+            get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } },
+            set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+            del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+        };
+
+        // ===== Jogador =====
+        const playerName = document.getElementById("playerName");
+        playerName.value = LS.get("mc_name", "");
+        playerName.addEventListener("input", () => {
+            playerName.value = playerName.value.replace(/[^A-Za-z0-9_]/g, "").slice(0, 16);
+            LS.set("mc_name", playerName.value);
+        });
+        function nomeJogador() { return playerName.value || "Player"; }
+
+        // ===== Skin (PNG guardado no aparelho) + preview 3D =====
+        const SKIN_KEY = "mc_skin_v1";
+        const SKIN_PADRAO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAYAAACinX6EAAAABGdBTUEAALGPC/xhBQAAABh0RVh0U29mdHdhcmUAUGFpbnQuTkVUIHYzLjM2qefiJQAABONJREFUaEPll99rVEcUx6+IUk1ijbQYosYfG+OaRtb4g2JEY42/EYuRipqioqIxMQiLVlDE+INqKlSfAkq0UChIUXzwFyL2sU956X9TmofjfM/u9/ZknLs30cUN8cJh5s6cuTvfz5w5MzslSnmaF9QIXP4bGYmmT5um3qjjGfl3arT/28aSX7j9+p8pab8xofsBoLHuC8kt/FKN72iDnd+ek55NK+XnfWviEnW0wya0uLFMDoIpvql+ZiKATCYj1gBlUgDg6nPlURIKSkbApAVgxSICYHY7fBYAAMEXz3yQBKAz2zQ5tgDFQ/Dy+dUKYuHsqjghEgD2vG+TIgcAAIUzCpgMmQOY8UPlWBJtRX2y82YKDKKWzatSsasys2XFooLlFtXINw2FkyA7v0qPPviiDQDohzEYi2+gn99l0sQ4W8c7Iqmi4vHjFgAm3tIwS4VA4OrGWi1peN/cPEfam79WPwChD8agjVFiAZS6R1QcgE66rrBqBeFOmFvFxjq+18jLgTPy9te8/D3YL29v5139nDz+6ZCsWTpHx8AXYzA23i7um/h22j2i4gB0pepdKC+YVVhV944wRj23pFb+vHxSnt/o0/JJf58M5X+UNwN5GTq9Ww0+8MUYjEUd38I38Z52j5gYAOI8UC2ZuTPk5oE2GTq+VdqyX6l4PJ0bBuTFpVMqHnU8gAIf+GIMxjbVV8f7HwDS7hETB4BbMWyFloZaudHZKoNHvpNbh9Y5cdvk2aVj8upaPj7m/rp1Rn7v2S797s4PH/hiDMbiG1x9Aih1j6g4AIY9wvZYR04e9Hwv949v0T83ONbuHu5wAjfJhc1rR9mdwxvl6r516gNfjMFYfEO3QHE7pN0jKg4Ak6cAlEOnduiK/nJwvZzbkZOzW1ukr6NZxcIu7lkt139Yr4Y6fOD7W/dOHXv/xK5CWYRIkPYOgTrBVRyAP4H9O4fFWjabFWupEx4ejv8K+xejyPVFR4+WtrQfePRI9DswV8ftc2/r0rhMG57aXw4AoWsx2soCgOKL5ecNwEWAXX2F/LFPOSIg6b9BWSLA2wIfDWBlNi+wpsVdWm5r+2OU2T6/v611QKIrV/63ri6J7t2T6OFDTZg4Kpk80aZm/VFHG0TRnj6VCMb3JH/6+P0czzItIijwQwAAlgrq7i4Y6px4EQIAqEhOyPpjDPz9SVsA/Da/zz6UBGp//0MBMBLGEwEKIDRBThITRERYkdYf9ZB4GwUhwHaM3//JASDsKQp1OwECsG1J/gBFcLbuC7TR9KkiwOYB7HtrKh6iaJg8BUAQ62y3vgSGCAkBcONxKaPddJcv/P+whjbr4/enpYAolOQoECHu54j3AFhBgGEBhIRZYNwCoTHFbRMCMHi2K4aAfguhLABsHih1CsQ5gBAIgCFv9z9hEAC3jQ175goDxIpjBBAAyhAAbS9CGlMEMAGO9xgMngJ++FMUAfinQAhWAgCItSvsAwhtkbIAKAXovWPQJjz/BMB7Wtb2sjgjgGUIQKkckQqgvb1dYKWOQfTRr7e3V6zFgngh4er54c+E6AOw/vQxCdGK8yMAMGyOYL/dImMGkCSQ7Un9NkfgMuXfI/CuN0YDAH724sXEqveFIhC0YWwSAIoMRUjFAIRyCIEoBCcu9WrtfCxEf4VHJUCX6ELH4HgAvAMPTt9mhQSK5wAAAABJRU5ErkJggg==";
+        function skinAtual() { return LS.get(SKIN_KEY, ""); }
+
+        const skinSrc = document.createElement("canvas"); skinSrc.width = 64; skinSrc.height = 32;
+        const skinStage = document.getElementById("skinStage");
+        const skinBox = document.getElementById("skin3d");
+        const SC = 6; // px por unidade do modelo
+        // w,h,d em unidades; (x,y) = centro relativo ao centro do modelo; (u,v) = origem na textura; mirror = membro esquerdo
+        const PARTES = [
+            { w: 8, h: 8,  d: 8, x: 0,  y: -12, u: 0,  v: 0 },
+            { w: 8, h: 12, d: 4, x: 0,  y: -2,  u: 16, v: 16 },
+            { w: 4, h: 12, d: 4, x: -6, y: -2,  u: 40, v: 16 },
+            { w: 4, h: 12, d: 4, x: 6,  y: -2,  u: 40, v: 16, mirror: true },
+            { w: 4, h: 12, d: 4, x: -2, y: 10,  u: 0,  v: 16 },
+            { w: 4, h: 12, d: 4, x: 2,  y: 10,  u: 0,  v: 16, mirror: true }
+        ];
+        function faceCanvas(p, face) {
+            const { w, h, d, u, v } = p;
+            // retangulo da textura (sx, sy, sw, sh) e tamanho em unidades (W, H)
+            const R = {
+                right:  [u,         v + d, d, h, d, h],
+                front:  [u + d,     v + d, w, h, w, h],
+                left:   [u + d + w, v + d, d, h, d, h],
+                back:   [u + d + w + d, v + d, w, h, w, h],
+                top:    [u + d,     v,     w, d, w, d],
+                bottom: [u + d + w, v,     w, d, w, d]
+            };
+            let key = face;
+            if (p.mirror) key = face === "right" ? "left" : face === "left" ? "right" : face;
+            const [sx, sy, sw, sh] = R[key], [W, H] = R[face].slice(4);
+            const c = document.createElement("canvas");
+            c.width = W * SC; c.height = H * SC;
+            const g = c.getContext("2d"); g.imageSmoothingEnabled = false;
+            if (p.mirror) { g.translate(c.width, 0); g.scale(-1, 1); }
+            g.drawImage(skinSrc, sx, sy, sw, sh, 0, 0, c.width, c.height);
+            c.style.width = c.width + "px"; c.style.height = c.height + "px";
+            c.style.left = (-c.width / 2) + "px"; c.style.top = (-c.height / 2) + "px";
+            return c;
+        }
+        function montarModelo() {
+            skinStage.innerHTML = "";
+            const body = document.createElement("div"); body.className = "part"; body.id = "skinBody";
+            body.style.transformStyle = "preserve-3d";
+            for (const p of PARTES) {
+                const part = document.createElement("div"); part.className = "part";
+                part.style.transform = `translate3d(${p.x * SC}px, ${p.y * SC}px, 0)`;
+                const f = (face, t) => { const c = faceCanvas(p, face); c.style.transform = t; part.appendChild(c); };
+                f("front",  `translateZ(${p.d * SC / 2}px)`);
+                f("back",   `rotateY(180deg) translateZ(${p.d * SC / 2}px)`);
+                f("right",  `rotateY(-90deg) translateZ(${p.w * SC / 2}px)`);
+                f("left",   `rotateY(90deg) translateZ(${p.w * SC / 2}px)`);
+                f("top",    `rotateX(90deg) translateZ(${p.h * SC / 2}px)`);
+                f("bottom", `rotateX(-90deg) translateZ(${p.h * SC / 2}px)`);
+                body.appendChild(part);
+            }
+            skinStage.appendChild(body);
+        }
+        let angY = -30, angX = -12, arrastando = false, ultimoX = 0, ultimoY = 0;
+        function aplicarRotacao() {
+            const b = document.getElementById("skinBody");
+            if (b) b.style.transform = `rotateX(${angX}deg) rotateY(${angY}deg)`;
+        }
+        function carregarSkinNoModelo() {
+            const img = new Image();
+            img.onload = () => {
+                const g = skinSrc.getContext("2d"); g.clearRect(0, 0, 64, 32); g.drawImage(img, 0, 0, 64, 32);
+                montarModelo(); aplicarRotacao();
+            };
+            img.src = skinAtual() || SKIN_PADRAO;
+            document.getElementById("skinClear").style.display = skinAtual() ? "inline-block" : "none";
+        }
+        skinBox.addEventListener("pointerdown", (e) => { arrastando = true; ultimoX = e.clientX; ultimoY = e.clientY; skinBox.classList.add("drag"); skinBox.setPointerCapture(e.pointerId); });
+        skinBox.addEventListener("pointermove", (e) => {
+            if (!arrastando) return;
+            angY += (e.clientX - ultimoX) * 0.8; angX = Math.max(-60, Math.min(60, angX - (e.clientY - ultimoY) * 0.5));
+            ultimoX = e.clientX; ultimoY = e.clientY; aplicarRotacao();
+        });
+        const soltar = () => { arrastando = false; skinBox.classList.remove("drag"); };
+        skinBox.addEventListener("pointerup", soltar); skinBox.addEventListener("pointercancel", soltar);
+        (function girar() {
+            if (!arrastando && skinBox.offsetParent !== null) { angY += 0.6; aplicarRotacao(); }
+            requestAnimationFrame(girar);
+        })();
+        document.getElementById("skinFile").addEventListener("change", (e) => {
+            const f = e.target.files && e.target.files[0];
+            if (!f) return;
+            const img = new Image();
+            img.onload = () => {
+                const cv = document.createElement("canvas"); cv.width = 64; cv.height = 32;
+                const c = cv.getContext("2d"); c.imageSmoothingEnabled = false;
+                if (img.width === 64 && img.height >= 32) c.drawImage(img, 0, 0, 64, 32, 0, 0, 64, 32);
+                else c.drawImage(img, 0, 0, 64, 32);
+                LS.set(SKIN_KEY, cv.toDataURL("image/png"));
+                carregarSkinNoModelo();
+            };
+            img.onerror = () => alert("Esse arquivo nao parece uma imagem PNG valida.");
+            img.src = URL.createObjectURL(f);
+        });
+        document.getElementById("skinClear").addEventListener("click", () => {
+            LS.del(SKIN_KEY); document.getElementById("skinFile").value = ""; carregarSkinNoModelo();
+        });
+        carregarSkinNoModelo();
+
+        // ===== Servidores (nome, IP, porta) =====
+        const SRV_KEY = "mc_servers_v1", SRV_SEL = "mc_server_sel";
+        const serverSel = document.getElementById("serverSel"), srvForm = document.getElementById("srvForm");
+        let servidores = [];
+        try { servidores = JSON.parse(LS.get(SRV_KEY, "[]")) || []; } catch (e) { servidores = []; }
+        let editandoId = null;
+        function salvarServidores() { LS.set(SRV_KEY, JSON.stringify(servidores)); }
+        function preencherServidores(selecionar) {
+            serverSel.innerHTML = "";
+            const solo = new Option("Jogo solo (sem servidor)", "solo"); serverSel.add(solo);
+            for (const s of servidores) serverSel.add(new Option(`${s.name}  (${s.host}:${s.port})`, s.id));
+            serverSel.value = selecionar && [...serverSel.options].some(o => o.value === selecionar) ? selecionar : "solo";
+            LS.set(SRV_SEL, serverSel.value);
+            const sel = serverSel.value !== "solo";
+            document.getElementById("srvEdit").disabled = !sel; document.getElementById("srvDel").disabled = !sel;
+        }
+        function servidorSelecionado() { return servidores.find(s => s.id === serverSel.value) || null; }
+        function abrirForm(s) {
+            editandoId = s ? s.id : null;
+            document.getElementById("srvName").value = s ? s.name : "";
+            document.getElementById("srvHost").value = s ? s.host : "";
+            document.getElementById("srvPort").value = s ? s.port : 25565;
+            document.getElementById("srvPass").value = s ? s.pass : "";
+            srvForm.style.display = "block";
+        }
+        serverSel.addEventListener("change", () => preencherServidores(serverSel.value));
+        document.getElementById("srvNew").addEventListener("click", () => abrirForm(null));
+        document.getElementById("srvEdit").addEventListener("click", () => { const s = servidorSelecionado(); if (s) abrirForm(s); });
+        document.getElementById("srvCancel").addEventListener("click", () => { srvForm.style.display = "none"; });
+        document.getElementById("srvDel").addEventListener("click", () => {
+            const s = servidorSelecionado();
+            if (!s || !confirm(`Apagar o servidor "${s.name}"?`)) return;
+            servidores = servidores.filter(x => x.id !== s.id); salvarServidores(); preencherServidores("solo");
+        });
+        document.getElementById("srvPreset").addEventListener("click", () => {
+            // servidores c0.30 da lista do Betacraft; "online" = exige mppass valido (login do minecraft.net, que nao existe mais)
+            const lista = [
+                ["Anarquia Classica de Lenni", "lenni0451.net", 39999], ["A Grande Provincia", "province.krazeetobi.org", 25565],
+                ["AlwaysClassic", "alwaysalpha.xyz", 25564], ["ClassicHaven (online)", "15.204.223.25", 25565],
+                ["Omniarchive Classic (online)", "5.161.125.110", 25566], ["Minesweeper Classic (online)", "binoclard.net", 25565],
+                ["Good old Lava Survival (online)", "145.239.86.249", 25589], ["Not Awesome 2 (online)", "162.245.188.76", 25556],
+                ["Supernova Online (online)", "81net.duckdns.org", 25566]];
+            let n = 0;
+            for (const [name, host, port] of lista) {
+                if (servidores.some(x => x.host === host && x.port === port)) continue;
+                servidores.push({ id: "p" + Date.now().toString(36) + n++, name, host, port, pass: "" });
+            }
+            salvarServidores(); preencherServidores(serverSel.value);
+            alert(n + " servidor(es) adicionado(s). Os marcados (online) provavelmente exigem mppass.");
+        });
+        document.getElementById("srvSave").addEventListener("click", () => {
+            const host = document.getElementById("srvHost").value.trim();
+            const port = parseInt(document.getElementById("srvPort").value, 10);
+            let name = document.getElementById("srvName").value.trim() || host;
+            if (!/^[A-Za-z0-9._\-:\[\]]{1,253}$/.test(host)) { alert("Informe um IP ou endereco valido."); return; }
+            if (!(port >= 1 && port <= 65535)) { alert("A porta deve estar entre 1 e 65535."); return; }
+            const pass = document.getElementById("srvPass").value.trim();
+            let s = servidores.find(x => x.id === editandoId);
+            if (!s) { s = { id: "s" + Date.now().toString(36) }; servidores.push(s); }
+            Object.assign(s, { name, host, port, pass });
+            salvarServidores(); srvForm.style.display = "none"; preencherServidores(s.id);
+        });
+        preencherServidores(LS.get(SRV_SEL, "solo"));
+
+        // ===== Musica ambiente (Alpha: calm1-3) =====
+        const MUSICAS = ["music/calm1.ogg", "music/calm2.ogg", "music/calm3.ogg"];
+        (function () {
+            const g = (k) => { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } };
+            document.getElementById("tsOn").checked = g("mc_ts") === "1";
+            document.getElementById("tsKey").value = g("mc_ts_key");
+            document.getElementById("tsCtl").value = g("mc_ts_ctl");
+            const wp = document.getElementById("wsProxy"); wp.value = g("mc_wsproxy");
+            wp.addEventListener("change", () => { try { localStorage.setItem("mc_wsproxy", wp.value.trim()); } catch (e) {} });
+            document.getElementById("tsApply").addEventListener("click", () => {
+                try {
+                    localStorage.setItem("mc_ts", document.getElementById("tsOn").checked ? "1" : "0");
+                    localStorage.setItem("mc_ts_key", document.getElementById("tsKey").value.trim());
+                    localStorage.setItem("mc_ts_ctl", document.getElementById("tsCtl").value.trim());
+                } catch (e) {}
+                location.reload();
+            });
+        })();
+        const musicOn = document.getElementById("musicOn");
+        musicOn.checked = LS.get("mc_music", "1") === "1";
+        musicOn.addEventListener("change", () => { LS.set("mc_music", musicOn.checked ? "1" : "0"); if (!musicOn.checked) pararMusica(); });
+        let musicaEl = null, musicaTimer = null;
+        function pararMusica() { clearTimeout(musicaTimer); if (musicaEl) { musicaEl.pause(); musicaEl = null; } }
+        function agendarMusica(minS, maxS) {
+            clearTimeout(musicaTimer);
+            musicaTimer = setTimeout(tocarMusica, (minS + Math.random() * (maxS - minS)) * 1000);
+        }
+        function tocarMusica() {
+            if (!musicOn.checked) return;
+            const el = new Audio(MUSICAS[Math.floor(Math.random() * MUSICAS.length)]);
+            el.volume = 0.35; musicaEl = el;
+            el.addEventListener("ended", () => agendarMusica(120, 240));
+            el.addEventListener("error", () => agendarMusica(120, 240));
+            el.play().catch(() => {
+                // sem permissao de som ainda: tenta de novo no proximo toque
+                const t = () => { document.removeEventListener("touchstart", t); document.removeEventListener("mousedown", t); if (musicOn.checked) el.play().catch(() => {}); };
+                document.addEventListener("touchstart", t, { once: true }); document.addEventListener("mousedown", t, { once: true });
+            });
+        }
+
+        async function iniciarMinecraft() {
+            liberarAudio();
+            try {
+                // Tela cheia + paisagem (precisa ser dentro do toque do usuario)
+                try {
+                    if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+                    if (screen.orientation && screen.orientation.lock) await screen.orientation.lock("landscape");
+                } catch (e) { /* alguns navegadores nao permitem; seguimos */ }
+                await new Promise(r => setTimeout(r, 400));
+                if (window.innerHeight > window.innerWidth) {
+                    setStatus("Gire o celular para PAISAGEM e toque em Iniciar de novo", 100);
+                    return;
+                }
+                startButton.disabled = true;
+                setStatus("Verificando arquivos...", 100);
+                await checarAmbiente();
+                setStatus("Construindo janela grafica...", 100);
+                gameZone.innerHTML = "";
+
+                // Canvas onde o LWJGL (cheerpj-natives) desenha o OpenGL — precisa existir ANTES do applet iniciar
+                const W = Math.max(320, window.innerWidth), H = Math.max(240, window.innerHeight);
+                const glc = document.getElementById("lwjgl");
+                glc.width = W; glc.height = H;
+                window.lwjglCanvasElement = glc;
+                const applet = document.createElement("cheerpj-applet");
+                const modoSeguro = new URLSearchParams(location.search).get("safe") === "1";
+                applet.setAttribute("code", modoSeguro ? "com.mojang.minecraft.MinecraftApplet" : "com.mojang.minecraft.MCApplet");
+                
+                // Usando caminhos estritamente relativos puros sem barra inicial para o CheerpJ 3.0 ler a pasta atual
+                applet.setAttribute("archive","minecraft-v24.jar,lwjgl.jar,lwjgl_util.jar,jinput.jar,lzma.jar");
+                applet.setAttribute("width", String(W));
+                applet.setAttribute("height", String(H));
+
+                adicionarParametro(applet, "username", nomeJogador());
+                adicionarParametro(applet, "sessionid", "0");
+                adicionarParametro(applet, "fullscreen", "false");
+                adicionarParametro(applet, "mobs", "true");
+                const skinSalva = skinAtual();
+                if (skinSalva) adicionarParametro(applet, "skin", skinSalva);
+                if (document.getElementById("autoSave").checked) adicionarParametro(applet, "autosave", "1");
+                if (!document.getElementById("soundOn").checked) adicionarParametro(applet, "audio", "0");
+                if (document.getElementById("freshWorld").checked) adicionarParametro(applet, "fresh", "1");
+                const srv = servidorSelecionado();
+                if (srv) {
+                    adicionarParametro(applet, "server", srv.host);
+                    adicionarParametro(applet, "port", String(srv.port));
+                    if (srv.pass) adicionarParametro(applet, "mppass", srv.pass);
+                    { let w = ""; try { w = localStorage.getItem("mc_wsproxy") || ""; } catch (e) {} adicionarParametro(applet, "wsproxy", w || "ws://localhost:8080/?host={host}&port={port}"); }
+                }
+                if (musicOn.checked) agendarMusica(40, 90);
+
+                startup.style.display = "none";
+                gameContainer.style.display = "block";
+                gameZone.appendChild(applet);
+
+                const api = configurarMapeamentoBotoes();
+
+                // ===== Gestos na tela (estilo Minecraft PE) =====
+                //  - tocar rapido          -> coloca bloco (botao direito)
+                //  - tocar e SEGURAR       -> ataca / quebra bloco (botao esquerdo segurado)
+                //  - arrastar o dedo       -> mover a camera
+                const TAP_SLOP = 12;   // px que o dedo pode mexer e ainda contar como toque parado
+                const HOLD_MS = 280;   // tempo parado para virar "segurar"
+                const toques = new Map();
+                let segurando = null;  // id do dedo que esta com o botao esquerdo apertado
+                const emMenu = () => !!(window.lwjglMenuMode && window.lwjglMenuMode());
+
+                glc.addEventListener("touchstart", (e) => {
+                    e.preventDefault();
+                    for (const t of e.changedTouches) {
+                        const id = t.identifier;
+                        const s = { x: t.clientX, y: t.clientY, x0: t.clientX, y0: t.clientY, moveu: false, menu: false, timer: 0 };
+                        toques.set(id, s);
+                        // Menus / tela de morte: o toque vira clique do mouse
+                        if (emMenu() && window.lwjglPointer) {
+                            s.menu = true;
+                            window.lwjglPointer("move", t.clientX, t.clientY);
+                            window.lwjglPointer("down", t.clientX, t.clientY);
+                            continue;
+                        }
+                        s.timer = setTimeout(() => {
+                            s.timer = 0;
+                            if (!s.moveu && segurando === null && toques.has(id)) {
+                                segurando = id;
+                                api.mouse(0, "mousedown");
+                            }
+                        }, HOLD_MS);
+                    }
+                }, { passive: false });
+
+                glc.addEventListener("touchmove", (e) => {
+                    e.preventDefault();
+                    for (const t of e.changedTouches) {
+                        const s = toques.get(t.identifier);
+                        if (!s) continue;
+                        if (s.menu) { window.lwjglPointer("move", t.clientX, t.clientY); s.x = t.clientX; s.y = t.clientY; continue; }
+                        if (!s.moveu && Math.hypot(t.clientX - s.x0, t.clientY - s.y0) > TAP_SLOP) {
+                            s.moveu = true;
+                            if (s.timer) { clearTimeout(s.timer); s.timer = 0; }
+                        }
+                        if (s.moveu) {
+                            const k = 1.5;
+                            if (window.lwjglLook) window.lwjglLook((t.clientX - s.x) * k, (t.clientY - s.y) * k);
+                        }
+                        s.x = t.clientX; s.y = t.clientY;
+                    }
+                }, { passive: false });
+
+                const fimToque = (e) => {
+                    const cancelado = e.type === "touchcancel";
+                    for (const t of e.changedTouches) {
+                        const id = t.identifier;
+                        const s = toques.get(id);
+                        if (!s) continue;
+                        toques.delete(id);
+                        const aindaNaoSegurou = s.timer !== 0;
+                        if (s.timer) { clearTimeout(s.timer); s.timer = 0; }
+                        if (s.menu) {
+                            window.lwjglPointer("move", t.clientX, t.clientY);
+                            setTimeout(() => window.lwjglPointer("up", t.clientX, t.clientY), 60);
+                        } else if (segurando === id) {
+                            segurando = null;
+                            api.mouse(0, "mouseup");           // soltou: para de quebrar
+                        } else if (aindaNaoSegurou && !s.moveu && !cancelado) {
+                            api.mouse(2, "mousedown");         // toque rapido: coloca bloco
+                            setTimeout(() => api.mouse(2, "mouseup"), 50);
+                        }
+                    }
+                };
+                glc.addEventListener("touchend", fimToque);
+                glc.addEventListener("touchcancel", fimToque);
+                setTimeout(() => glc.focus(), 500);
+                glc.addEventListener("click", () => glc.focus());
+            } catch (error) {
+                startButton.disabled = false;
+                showError(error && error.message ? error.message : error);
+            }
+        }
+
+        function adicionarParametro(applet, nome, valor) {
+            const param = document.createElement("param");
+            param.setAttribute("name", nome);
+            param.setAttribute("value", valor);
+            applet.appendChild(param);
+        }
+
+        function configurarMapeamentoBotoes() {
+            const canvasJogo = document.getElementById("lwjgl");
+
+            // Teclas: { key, code, kc } -> KeyboardEvent entregue ao canvas (o lwjgl.js converte para o LWJGL)
+            const K = {
+                W:     { key: "w",      code: "KeyW",   kc: 87 },
+                A:     { key: "a",      code: "KeyA",   kc: 65 },
+                S:     { key: "s",      code: "KeyS",   kc: 83 },
+                D:     { key: "d",      code: "KeyD",   kc: 68 },
+                B:     { key: "b",      code: "KeyB",   kc: 66 },
+                F:     { key: "f",      code: "KeyF",   kc: 70 },
+                R:     { key: "r",      code: "KeyR",   kc: 82 },
+                Space: { key: " ",      code: "Space",  kc: 32 },
+                Esc:   { key: "Escape", code: "Escape", kc: 27 },
+                Tab:   { key: "Tab",    code: "Tab",    kc: 9  },
+                Enter: { key: "Enter",  code: "Enter",  kc: 13 }
+            };
+
+            function simularTecla(tecla, tipoEvento) {
+                const evento = new KeyboardEvent(tipoEvento, {
+                    bubbles: true, cancelable: true,
+                    key: tecla.key, code: tecla.code, keyCode: tecla.kc, which: tecla.kc
+                });
+                document.dispatchEvent(evento);
+                if (canvasJogo) canvasJogo.dispatchEvent(evento);
+            }
+
+            function simularCliqueMouse(botaoMouse, tipoEvento) {
+                const alvo = canvasJogo || document;
+                const rect = alvo.getBoundingClientRect();
+                alvo.dispatchEvent(new MouseEvent(tipoEvento, {
+                    bubbles: true, cancelable: true, view: window, button: botaoMouse,
+                    clientX: rect.left + rect.width / 2,
+                    clientY: rect.top + rect.height / 2
+                }));
+            }
+
+            // Botao que segura a tecla enquanto o dedo esta nele (dedos independentes = multitoque)
+            function botaoSegura(id, tecla) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                let ativos = 0;
+                el.addEventListener("touchstart", (e) => {
+                    e.preventDefault();
+                    if (ativos++ === 0) simularTecla(tecla, "keydown");
+                }, { passive: false });
+                const solta = (e) => {
+                    e.preventDefault();
+                    ativos = Math.max(0, ativos - e.changedTouches.length);
+                    if (ativos === 0) simularTecla(tecla, "keyup");
+                };
+                el.addEventListener("touchend", solta, { passive: false });
+                el.addEventListener("touchcancel", solta, { passive: false });
+            }
+
+            // Botao de toque unico: aperta e solta (com um pequeno intervalo para o jogo registrar)
+            function botaoToque(id, tecla) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener("touchstart", (e) => {
+                    e.preventDefault();
+                    simularTecla(tecla, "keydown");
+                    setTimeout(() => simularTecla(tecla, "keyup"), 60);
+                }, { passive: false });
+            }
+
+            botaoSegura("btn-up", K.W);
+            botaoSegura("btn-left", K.A);
+            botaoSegura("btn-down", K.S);
+            botaoSegura("btn-right", K.D);
+            botaoSegura("btn-jump", K.Space);
+            botaoSegura("btn-inv", K.B);
+            botaoSegura("btn-esc", K.Esc);
+            // TAB: segure para ver a lista de jogadores (multiplayer). No survival, o proprio Tab tambem atira flecha.
+            botaoSegura("btn-tab", K.Tab);
+            // FLECHA: um toque = uma flecha (o jogo atira flecha na tecla Tab)
+            botaoToque("btn-arrow", K.Tab);
+            // Extras
+            botaoToque("btn-fog", K.F);
+            botaoToque("btn-savepos", K.Enter);
+            botaoToque("btn-loadpos", K.R);
+
+            const btnMore = document.getElementById("btn-more");
+            const painel = document.getElementById("more-panel");
+            if (btnMore && painel) {
+                btnMore.addEventListener("touchstart", (e) => {
+                    e.preventDefault();
+                    const aberto = painel.classList.toggle("open");
+                    btnMore.classList.toggle("on", aberto);
+                }, { passive: false });
+            }
+
+            // QUEBRAR / BLOCO continuam funcionando como antes
+            const botaoMouse = (id, b) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener("touchstart", (e) => { e.preventDefault(); simularCliqueMouse(b, "mousedown"); }, { passive: false });
+                const fim = (e) => { e.preventDefault(); simularCliqueMouse(b, "mouseup"); };
+                el.addEventListener("touchend", fim, { passive: false });
+                el.addEventListener("touchcancel", fim, { passive: false });
+            };
+            botaoMouse("btn-attack", 0);
+            botaoMouse("btn-build", 2);
+
+            return { mouse: simularCliqueMouse, key: simularTecla };
+        }
+
+        window.addEventListener("load", () => { setTimeout(iniciarCheerpJ, 1000); });
+        startButton.addEventListener("click", iniciarMinecraft);
+    </script>
+</body>
+</html>

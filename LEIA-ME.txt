@@ -1,0 +1,87 @@
+COMO RODAR
+1) NAO abra o index.html com duplo clique (file://). Sirva por HTTP com suporte a Range:
+     npx http-server -p 8080        (na pasta deste jogo)   ->  http://localhost:8080
+   (python -m http.server NAO funciona: nao suporta Range.)  Ou suba tudo num host (GitHub Pages, Netlify, Apache).
+2) Use Chrome/Edge desktop. Aperte F12 > Console/Network para ver erros (404 = arquivo faltando).
+3) Clique "Iniciar Minecraft", depois clique dentro do jogo (captura o mouse).
+Mudancas: loader CheerpJ 5.0 (o 3.0 nao roda applet/LWJGL), lwjgl_util.jar recriado (GLU minimo), jinput/lzma no archive.
+
+SURVIVAL: o minecraft.jar enviado antes ainda iniciava em CRIATIVO (l.class criava d/a = CreativeMode).
+Agora l.class cria d/c (SurvivalMode: vida, mobs, flechas, pontuacao). Como d/c nao tinha construtor no jar,
+foi adicionado um (d/c(l) -> super(l)). Assinaturas META-INF/*.SF/*.RSA removidas (jar alterado).
+
+LWJGL (erro "no lwjgl in java.library.path"): o CheerpJ nao traz o LWJGL pronto. Foi adicionada a pasta
+cheerpj-natives/ (repositorio oficial leaningtech/cheerpj-natives, Apache-2.0) = LWJGL implementado em JavaScript/WebGL2,
+com 3 funcoes extras para este jogo (glVertex2f, glDeleteTextures, glInterleavedArrays). A pasta precisa ficar
+na raiz do site, ao lado do index.html (o java.library.path aponta para /app/cheerpj-natives/natives).
+Essa implementacao e PARCIAL: pode faltar nevoa/iluminacao/alguns efeitos visuais.
+
+
+=== v20: skin, salvar mundo, som ===
+SKIN: escolha um PNG (64x32) na pagina inicial. O jogo o recebe pelo parametro "skin" do applet (com.mojang.minecraft.MCApplet)
+  e o coloca em Player.newTexture. Obs.: em primeira pessoa o proprio jogador nao aparece, entao a skin so fica visivel se houver camera externa.
+SALVAR: o jogo salva/carrega "level.dat"; o caminho foi trocado para /files/level.dat (area persistente do CheerpJ, fica no navegador).
+  MCApplet salva sozinho a cada ~45 s (so se o mapa mudou). Marque "Comecar um mundo novo" para apagar o salvo.
+SOM: o jogo nao traz arquivos de audio (eram baixados de minecraft.net, que nao existe mais). Passos e sons de blocos sao SINTETIZADOS
+  em Java (MCApplet.synth). A chamada AudioSystem.getSourceDataLine foi trocada por com.mojang.minecraft.JsAudio, que manda o PCM
+  para o WebAudio (funcao nativa Java_com_mojang_minecraft_JsAudio_nPlay em lwjgl.js). Nao ha musica.
+Se algo falhar, abra a pagina com ?safe=1 para usar o applet original (MinecraftApplet), mantendo o resto igual.
+Codigo-fonte das classes novas: src/ .
+
+=== v21 ===
+SONS ORIGINAIS (Alpha): sound/step/{grass,gravel,stone,wood}1-4 e newsound/step/cloth1-4 foram convertidos para PCM e ficam
+  dentro de minecraft-v21.jar (/mcsnd/*.raw). "metal" nao tem arquivo original e continua sintetizado.
+MUSICA: pasta music/ (calm1-3.ogg do Alpha), tocada pelo navegador em intervalos aleatorios; da para desligar na pagina inicial.
+SKIN: preview 3D (CSS) na pagina inicial, arraste para girar.
+SERVIDORES: lista salva no aparelho (nome, IP, porta, mppass). Os dados vao como parametros server/port/mppass/username do applet.
+  Com servidor selecionado, o autosave do mundo local fica desligado. Navegadores nao abrem TCP comum: sem ponte de rede nao conecta.
+
+=== v22 (controles de toque) ===
+GESTOS NA TELA: tocar rapido = coloca bloco; tocar e SEGURAR (~0,28 s) = ataca/quebra (segura o botao esquerdo); arrastar = camera.
+  Segurar e depois arrastar continua quebrando enquanto vira a camera.
+BOTOES NOVOS: TAB (segure = lista de jogadores no multiplayer), FLECHA (um toque = uma flecha), MAIS (NEVOA=F, SALVAR POS=Enter, CARREGAR POS=R).
+TAB no jogo: a mesma tecla (Tab) mostra "Connected players" e, no survival com flechas, atira uma flecha.
+lwjgl.js: Tab/Enter/Backspace agora sao convertidos para o keysym X11 (antes o Tab nunca chegava ao jogo, nem no teclado do PC).
+
+=== v23 (otimizacao: travamentos apos ~1 minuto) ===
+CAUSA: em cheerpj-natives/natives-v22/lwjgl.js cada reconstrucao de lista de desenho (chunks/mobs) criava 3 buffers WebGL e
+nunca os liberava (glDeleteLists era um stub vazio e glNewList so liberava um dos dois tipos de lote). A GPU/memoria enchia
+ate cair para 0-1 fps. Corrigido: glNewList/glDeleteLists liberam buffers e VAOs, ids de lista sao reaproveitados.
+EXTRA: cada lote desenhado usa 1 VAO (1 bind + 1 draw em vez de ~12 chamadas GL); copia em memoria dos vertices e liberada apos
+subir para a GPU; envio imediato usa DYNAMIC_DRAW; removido o wrapper de diagnostico por chamada e o glGetError periodico.
+A pasta foi renomeada para natives-v22 para o navegador nao usar o lwjgl.js antigo em cache. Se ainda vier o antigo, Ctrl+F5.
+
+v23b: o autosave gravava o GZIP direto no arquivo (milhares de escritas pequenas no armazenamento do CheerpJ) e travava o jogo
+depois de salvar. Agora serializa na memoria e grava de uma vez; intervalo de 45 s -> 120 s. Jar renomeado: minecraft-v23.jar.
+
+v23c: autosave agora vem DESLIGADO (a escrita no armazenamento do CheerpJ trava o jogo). Marque 'Salvar o mundo automaticamente' na tela inicial para ligar.
+
+
+=== v24 (travamentos depois de um tempo: telemetria + som desligavel) ===
+- Nova pasta cheerpj-natives/natives-v24 e minecraft-v24.jar (nomes novos para evitar cache). Ctrl+F5 se vier o antigo.
+- lwjgl.js agora escreve no LOG uma linha [perf] a cada 10 s: fps, frames lentos, maior frame, buffers/VAOs/texturas vivos, listas, heap JS.
+  Se buf/vao/tex ou heapJS so sobem ao longo do tempo = vazamento; se fps cai com os numeros estaveis = CPU/Java/som.
+- Opcao "Som do jogo" na tela inicial: desmarque para testar sem o mixer de audio (principal suspeito de travar).
+- Log: grava no maximo a cada 5 s e ignora linhas repetidas.
+- Dica: ESC > Opcoes > distancia de visao menor ajuda em celulares.
+
+v24 multiplayer:
+- Corrigido o UnsatisfiedLinkError (Java_sun_net_ExtendedOptionsImpl_init): o jogo chamava setTcpNoDelay/setTrafficClass/etc. no socket, que o CheerpJ
+  nao implementa. Essas chamadas foram removidas do com.mojang.a.a (minecraft-v24.jar).
+- Navegador nao abre TCP. Novo bloco "Rede / multiplayer": ative o Tailscale, (opcional) cole uma auth key, "Aplicar e recarregar".
+  Sem auth key, aparece um link para fazer login. O servidor Minecraft Classic precisa estar na SUA tailnet (IP 100.x ou nome MagicDNS).
+  Servidores publicos (IP comum da internet) nao sao alcancaveis assim. NAO TESTADO no CheerpJ real.
+
+v24 servidor publico (SEM Tailscale): o jogo agora fala com um proxy WebSocket->TCP.
+- No Termux: pkg install nodejs ; node proxy/mc-ws-proxy.js 8080   (so aceita conexoes do proprio aparelho)
+- No jogo: cadastre o servidor (IP, porta, mppass) normalmente. URL do proxy padrao: ws://localhost:8080/?host={host}&port={port}
+- SocketChannel/InetSocketAddress do cliente foram trocados por JsChannel/JsAddr (WebSocket via lwjgl.js). Testado: o bytecode verifica na JVM e o proxy
+  repassa dados em teste local; NAO testado no CheerpJ nem num servidor real. Servidores que exigem login pelo minecraft.net (mppass) nao funcionam mais
+  hoje: o minecraft.net antigo nao existe; so servidores sem verificacao ou com mppass fornecido por voce.
+
+=== v25 (desempenho + diagnostico de travamento) ===
+- Nova pasta cheerpj-natives/natives-v25 (index.html ja aponta para ela). Ctrl+F5 se vier a antiga.
+- Matrizes so sao reenviadas a GPU quando mudam; VAO nao e mais desligado depois de cada desenho. Menos chamadas WebGL por chunk.
+- Linha [perf] ganhou: desenhos/frame, recompilados (glNewList em 10 s), listasCheias, comandos. Se listasCheias fica estavel
+  e buf/vao sobem = vazamento; se listasCheias sobe junto = o jogo esta carregando mais chunks.
+- ids de listas liberados nao sao mais duplicados.
