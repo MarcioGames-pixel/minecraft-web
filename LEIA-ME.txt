@@ -93,3 +93,14 @@ v24 servidor publico (SEM Tailscale): o jogo agora fala com um proxy WebSocket->
   e registram "[guard]" no log, em vez de gravar o jogo inteiro dentro dela para sempre.
 - [perf] ganhou: maiorLista=#id(tamanho: tipos de comando), guard=N, LISTA-ABERTA=N (se aparecer, o bug e esse).
 - Pasta natives-v26 (index.html ja aponta). Ctrl+F5 se vier a antiga.
+
+=== v27 (CAUSA REAL do travamento: Tesselator com limite de flush que so diminuia) ===
+- Log v26: guard=0 e sem LISTA-ABERTA -> a hipotese do v26 (glEndList perdido) estava errada. O que o log mostrou: entre 100 s e 111 s a "maiorLista"
+  passou de 7 comandos para #285 com 1504 x drawArraysInList, vao 300 -> 3326, desenhos/frame 161 -> 3879, fps 22 -> 1-2.
+- Causa: com.mojang.minecraft.b.c (Tesselator) so descarrega (flush) quando floats >= 524288 - 4*l. O campo "l" soma +3 (cor) e +2 (textura) a cada
+  init (b()) e NUNCA era zerado. Como o jogo chama init centenas de vezes por frame (mobs, particulas, GUI, chunks), "l" passa de 131072 depois de
+  ~1-2 minutos, o limite fica <= 0 e CADA QUAD vira um glDrawArrays separado (chunk com 1500 desenhos em vez de 1). Isso e um bug do proprio
+  Classic; a JVM nativa aguenta, o CheerpJ/WebGL nao.
+- Correcao: b() agora faz l = 3 (patch de bytecode, 7 bytes). Teste na JVM: 100000 inits -> l=300003 antes, l=6 depois. Verificador (-Xverify:all) OK.
+- Arquivos: minecraft-v27.jar (so b/c.class mudou em relacao ao v24), natives-v27 (lwjgl.js igual ao v26, so renomeado p/ evitar cache). index.html aponta p/ ambos.
+- Ctrl+F5 se vier a versao antiga. O "Network Error" no log (threads h e c) e o jogo tentando baixar skin/recursos de www.minecraft.net (nao existe mais); nao afeta o jogo.

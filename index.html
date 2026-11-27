@@ -410,7 +410,7 @@
                 setStatus("Configurando ambiente mobile...", 50);
                 // /app/ = raiz do servidor; usamos a pasta desta pagina para achar cheerpj-natives mesmo em subpastas
                 const baseDir = location.pathname.replace(/[^\/]*$/, "");
-                const nativesPath = "/app" + baseDir + "cheerpj-natives/natives-v26";
+                const nativesPath = "/app" + baseDir + "cheerpj-natives/natives-v27";
                 console.log("LWJGL natives em:", nativesPath + "/lwjgl.js");
                 const initOpts = { javaProperties: ["java.library.path=" + nativesPath] };
                 // Multiplayer: o navegador nao abre TCP; o CheerpJ usa uma rede Tailscale (configurada em "Rede / multiplayer")
@@ -438,7 +438,7 @@
 
         // Verifica se os natives estao acessiveis e se o navegador tem WebGL2, ANTES de iniciar o Java
         async function checarAmbiente() {
-            const base = location.pathname.replace(/[^\/]*$/, "") + "cheerpj-natives/natives-v26/";
+            const base = location.pathname.replace(/[^\/]*$/, "") + "cheerpj-natives/natives-v27/";
             // WebGL2
             try {
                 const t = document.createElement("canvas");
@@ -455,7 +455,7 @@
                 catch (e) { throw new Error("Nao consegui baixar " + url + " (" + e.message + ")"); }
                 const txt = await r.text();
                 console.log("[checagem] " + f + " -> HTTP " + r.status + " tipo=" + r.headers.get("content-type") + " range=" + r.headers.get("content-range") + " inicio=" + JSON.stringify(txt.slice(0, 30)));
-                if (!r.ok) throw new Error(f + " nao encontrado (HTTP " + r.status + ") em " + url + ". Suba a pasta cheerpj-natives/natives-v26 inteira no repositorio.");
+                if (!r.ok) throw new Error(f + " nao encontrado (HTTP " + r.status + ") em " + url + ". Suba a pasta cheerpj-natives/natives-v27 inteira no repositorio.");
                 if (/^\s*</.test(txt)) throw new Error(f + " veio como pagina HTML (nao e JavaScript). O servidor esta bloqueando ou o arquivo nao existe: " + url);
                 if (f === "lwjgl.js" && r.status !== 206) throw new Error("O servidor nao suporta o cabecalho Range (HTTP " + r.status + "). O CheerpJ precisa disso. Use GitHub Pages, Netlify ou Cloudflare Pages.");
             }
@@ -728,7 +728,7 @@
                 applet.setAttribute("code", modoSeguro ? "com.mojang.minecraft.MinecraftApplet" : "com.mojang.minecraft.MCApplet");
                 
                 // Usando caminhos estritamente relativos puros sem barra inicial para o CheerpJ 3.0 ler a pasta atual
-                applet.setAttribute("archive","minecraft-v24.jar,lwjgl.jar,lwjgl_util.jar,jinput.jar,lzma.jar");
+                applet.setAttribute("archive","minecraft-v27.jar,lwjgl.jar,lwjgl_util.jar,jinput.jar,lzma.jar");
                 applet.setAttribute("width", String(W));
                 applet.setAttribute("height", String(H));
 
