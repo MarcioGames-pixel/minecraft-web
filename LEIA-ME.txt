@@ -85,3 +85,11 @@ v24 servidor publico (SEM Tailscale): o jogo agora fala com um proxy WebSocket->
 - Linha [perf] ganhou: desenhos/frame, recompilados (glNewList em 10 s), listasCheias, comandos. Se listasCheias fica estavel
   e buf/vao sobem = vazamento; se listasCheias sobe junto = o jogo esta carregando mais chunks.
 - ids de listas liberados nao sao mais duplicados.
+
+=== v26 (diagnostico do estouro de buf/vao depois de travar) ===
+- Observado no log v25: buf/vao ficam sempre = 3x/1x o numero de lotes desenhados, e "listasCheias" fica estavel (312) enquanto "comandos"
+  sobe de 631 para 7339 em 20 s. Ou seja: nao e vazamento de buffers; algumas listas passaram a ter milhares de lotes.
+- Defesa: se uma lista ficar aberta (glEndList perdido por excecao/travada), glNewList e o fim do frame (SwapBuffers) agora fecham a lista
+  e registram "[guard]" no log, em vez de gravar o jogo inteiro dentro dela para sempre.
+- [perf] ganhou: maiorLista=#id(tamanho: tipos de comando), guard=N, LISTA-ABERTA=N (se aparecer, o bug e esse).
+- Pasta natives-v26 (index.html ja aponta). Ctrl+F5 se vier a antiga.
