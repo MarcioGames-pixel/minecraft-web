@@ -179,6 +179,7 @@ function pushInList(list, args, callee)
 function callList(listId)
 {
 	var l = cmdLists[listId];
+	if(!l) return;
 	for(var i=0;i<l.length;i++)
 	{
 		var c = l[i];
@@ -965,7 +966,7 @@ function Java_org_lwjgl_opengl_GL11_nglGenLists(lib, range, funcPtr)
 		return freeListIds.pop();
 	var ret = cmdLists.length;
 	for(var i=0;i<range;i++)
-		cmdLists.push([]);
+		cmdLists.push(null); // v24: cria a lista so em glNewList (o jogo reserva 524288 ids de uma vez)
 	return ret;
 }
 
@@ -985,6 +986,7 @@ function Java_org_lwjgl_opengl_GL11_nglNewList(lib, list, mode, funcPtr)
 {
 	checkNoList(curList);
 	assert(mode == 0x1300/*GL_COMPILE*/);
+	if(!cmdLists[list]) cmdLists[list] = [];
 	curList = cmdLists[list];
 	// Libera buffers/VAOs da versao anterior da lista e esvazia
 	freeCmdList(curList);
@@ -1824,13 +1826,13 @@ __natives.Java_com_mojang_minecraft_JsChannel_nConnect = async function(lib, buf
 		{
 			const ws = new WebSocket(url); ws.binaryType = "arraybuffer";
 			const id = __wsN++;
-			const st = { ws: ws, q: [], off: 0, closed: false };
+			const st = { ws: ws, q: [], off: 0, closed: false, rx: 0 };
 			__ws[id] = st;
 			const to = setTimeout(function(){ console.error("[net] timeout conectando em " + url); try { ws.close(); } catch(e){} fin(-1); }, 12000);
 			ws.onopen = function(){ opened = true; clearTimeout(to); console.log("[net] WebSocket aberto: " + url); fin(id); };
-			ws.onmessage = function(e){ st.q.push(new Uint8Array(e.data)); };
+			ws.onmessage = function(e){ if(e.data.byteLength){ st.rx += e.data.byteLength; st.q.push(new Uint8Array(e.data)); } };
 			ws.onerror = function(){ console.error("[net] erro no WebSocket " + url + " (proxy ligado? URL certa? pagina https precisa de wss:// ou ws://localhost)"); if(!opened){ clearTimeout(to); fin(-1); } };
-			ws.onclose = function(){ st.closed = true; console.log("[net] WebSocket fechado"); if(!opened){ clearTimeout(to); fin(-1); } };
+			ws.onclose = function(e){ st.closed = true; console.log("[net] WebSocket fechado codigo=" + (e && e.code) + " motivo=" + (e && e.reason) + " recebido=" + st.rx + " bytes"); if(!opened){ clearTimeout(to); fin(-1); } };
 		}
 		catch(e){ console.error("[net] falhou:", e); fin(-1); }
 	});
